@@ -1,0 +1,32 @@
+{
+  "name": "3dgource",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.8.1",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "extract": "tsx cli/extract.ts",
+    "galaxy": "tsx cli/galaxy.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "mediabunny": "^1.60.0",
+    "postprocessing": "^6.39.5",
+    "stats.js": "^0.17.0",
+    "three": "^0.186.1",
+    "tone": "^15.1.22",
+    "tweakpane": "^4.0.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "@types/stats.js": "^0.17.4",
+    "@types/three": "^0.186.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  }
+}
