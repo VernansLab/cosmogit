@@ -33,6 +33,7 @@ export class Panel {
     look.addBinding(s, 'aperture', { label: 'bokeh', min: 0, max: 60 }).on('change', apply);
     look.addBinding(s, 'filaments', { min: 0, max: 1.5 }).on('change', apply);
     look.addBinding(s, 'nebula', { min: 0, max: 1.5 }).on('change', apply);
+    look.addBinding(s, 'dust', { label: 'galactic dust', min: 0, max: 1.5 }).on('change', apply);
     look.addBinding(s, 'particleDensity', { label: 'particles', min: 0, max: 3 }).on('change', apply);
 
     const lp = app.layout.params;

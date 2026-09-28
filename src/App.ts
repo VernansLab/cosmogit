@@ -5,6 +5,7 @@ import { GalaxyLayout } from './layout/GalaxyLayout';
 import { Background } from './render/Background';
 import { type Action, Contributors } from './render/Contributors';
 import { Filaments } from './render/Filaments';
+import { GalacticDust } from './render/GalacticDust';
 import { extColor } from './render/palette';
 import { Particles } from './render/Particles';
 import { Post } from './render/Post';
@@ -22,6 +23,7 @@ export interface AppSettings {
   starSize: number;
   filaments: number;
   nebula: number;
+  dust: number;
   particleDensity: number;
   loop: boolean;
 }
@@ -31,9 +33,10 @@ export const defaultAppSettings: AppSettings = {
   autoSkipSeconds: 1.5,
   heatDecay: 8,
   aperture: 18,
-  starSize: 1,
+  starSize: 1.4,
   filaments: 0.8,
   nebula: 0.55,
+  dust: 0.22,
   particleDensity: 1,
   loop: false,
 };
@@ -67,6 +70,7 @@ export class App {
   layout = new GalaxyLayout(this.state);
   stars: Stars;
   filaments = new Filaments();
+  dust = new GalacticDust();
   particles: Particles;
   background: Background;
   contributors: Contributors | null = null;
@@ -87,9 +91,10 @@ export class App {
     this.stars = new Stars(this.renderer);
     this.particles = new Particles(this.renderer);
     this.background = new Background(this.renderer.getPixelRatio());
-    this.scene.add(this.background.object, this.filaments.object, this.stars.object, this.particles.object);
+    this.scene.add(this.background.object, this.dust.object, this.filaments.object, this.stars.object, this.particles.object);
     this.post = new Post(this.renderer, this.scene, this.camera);
     this.resize(canvas.clientWidth || window.innerWidth, canvas.clientHeight || window.innerHeight);
+    this.applySettings();
   }
 
   resize(w: number, h: number, pixelRatio = Math.min(window.devicePixelRatio, 2)): void {
@@ -104,6 +109,7 @@ export class App {
     const scale = (h * pixelRatio) / (2 * Math.tan((this.camera.fov * Math.PI) / 360));
     this.stars.pixelScale = scale * this.settings.starSize;
     this.particles.pixelScale = scale;
+    this.dust.pixelScale = scale;
   }
 
   get size(): { width: number; height: number } {
@@ -157,6 +163,7 @@ export class App {
     this.stars.uniforms.uAperture.value = s.aperture;
     this.filaments.uniforms.uOpacity.value = s.filaments;
     this.background.uniforms.uIntensity.value = s.nebula;
+    this.dust.uniforms.uOpacity.value = s.dust;
     this.particles.density = s.particleDensity;
     this.resize(this.width, this.height, this.renderer.getPixelRatio());
   }
@@ -258,6 +265,7 @@ export class App {
     this.particles.update(this.time);
     this.stars.update(this.time, this.layout);
     this.filaments.update(this.state, this.layout);
+    this.dust.update(dt, this.time, this.layout.radius);
     this.director.update(dt, this.layout.radius);
     this.background.update(this.time, this.camera.position);
     this.stars.uniforms.uFocus.value = this.director.focusDistance;

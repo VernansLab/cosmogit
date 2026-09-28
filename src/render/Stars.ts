@@ -38,7 +38,7 @@ const vertex = /* glsl */ `
       alive = d >= 1.0 ? 0.0 : (1.0 - d) * (1.0 + 3.0 * exp(-d * 10.0));
     }
     float twinkle = 0.88 + 0.12 * sin(uTime * (2.0 + mod(float(gl_VertexID), 7.0) * 0.4) + float(gl_VertexID));
-    float size = aSize * (1.0 + 1.8 * pulse + 0.6 * heat) * born * alive * twinkle;
+    float size = aSize * (1.0 + 0.9 * pulse + 0.4 * heat) * born * alive * twinkle;
     // Depth of field: out-of-focus stars spread into dimmer bokeh discs.
     float depth = max(-mv.z, 0.001);
     float px = size * uScale / depth;
@@ -55,7 +55,7 @@ const vertex = /* glsl */ `
     // Hot stars burn blue-white; cold ones sink into a dim, reddened version of their colour.
     vec3 cold = aColor * vec3(1.0, 0.75, 0.65) * 0.8;
     vec3 hot = mix(aColor, vec3(0.75, 0.88, 1.0), 0.55) * 2.2;
-    vColor = mix(cold, hot, heat) + aColor * pulse * 3.0;
+    vColor = mix(cold, hot, heat) + aColor * pulse * 2.0;
     vColor *= max(energy, 0.03) * (1.0 + vBlur * 1.5);
     vHeat = (heat + pulse) * (1.0 - vBlur);
     vAlpha = alive;
@@ -75,7 +75,7 @@ const fragment = /* glsl */ `
     float core = exp(-d * d * 22.0);
     float halo = exp(-d * 5.0) * 0.35;
     // Diffraction spikes on hot stars.
-    float spikes = (max(0.0, 1.0 - abs(p.x) * 40.0) + max(0.0, 1.0 - abs(p.y) * 40.0)) * (1.0 - d) * 0.6 * min(vHeat, 1.5);
+    float spikes = (max(0.0, 1.0 - abs(p.x) * 40.0) + max(0.0, 1.0 - abs(p.y) * 40.0)) * (1.0 - d) * 0.3 * min(vHeat, 1.2);
     float sharp = (core + halo + spikes) * (1.0 - smoothstep(0.8, 1.0, d));
     // Bokeh: flat disc with a brighter rim.
     float bokeh = (1.0 - smoothstep(0.82, 1.0, d)) * (0.55 + 0.45 * smoothstep(0.5, 0.95, d)) * 0.35;
@@ -111,7 +111,7 @@ export class Stars {
       uniforms: {
         uTime: { value: 0 },
         uScale: { value: 300 },
-        uMaxSize: { value: Math.min(range[1], 256) },
+        uMaxSize: { value: Math.min(range[1], 56 * window.devicePixelRatio) },
         uHeatDecay: { value: 6 },
         uFocus: { value: 50 },
         uAperture: { value: 0 },

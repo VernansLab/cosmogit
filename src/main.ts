@@ -1,4 +1,6 @@
 import { App } from './App';
+import { Sonifier } from './audio/Sonifier';
+import { Exporter } from './export/Exporter';
 import { parseAny } from './data/parse';
 import type { RepoLog } from './data/types';
 import { Hud } from './ui/Hud';
@@ -10,11 +12,45 @@ const toastEl = document.getElementById('toast')!;
 
 const app = new App(canvas);
 const hud = new Hud(app);
+const sound = new Sonifier();
 app.hooks = {
   onLoad: (log) => hud.onLoad(log),
   onCommit: (c, log) => hud.onCommit(c, log),
+  // The sound lands when the beam hits the star.
+  onAction: ({ author, applied }, strength) => sound.play(applied.kind, applied.file.ext, author, strength, 0.45),
+  onBigCommit: (_c, size) => sound.swell(size),
 };
-new Panel(app, {});
+
+// Browsers only allow audio after a user gesture.
+const unlockAudio = () => {
+  sound.start().catch(() => {});
+  window.removeEventListener('pointerdown', unlockAudio);
+  window.removeEventListener('keydown', unlockAudio);
+};
+window.addEventListener('pointerdown', unlockAudio);
+window.addEventListener('keydown', unlockAudio);
+
+const audioSettings = {
+  get enabled() {
+    return sound.enabled;
+  },
+  set enabled(v: boolean) {
+    sound.enabled = v;
+  },
+  get volume() {
+    return sound.volume;
+  },
+  set volume(v: number) {
+    sound.volume = v;
+  },
+  onChange: () => sound.applyVolume(),
+};
+const exporter = new Exporter(app, {
+  setExporting: (v) => setExporting(v),
+  progress: (_f, label) => toast(label, 60_000),
+  done: (msg) => toast(msg, 6000),
+});
+new Panel(app, { audio: audioSettings, exportVideo: (choice) => exporter.run(choice) });
 
 let toastTimer = 0;
 export function toast(msg: string, ms = 2200): void {
@@ -84,6 +120,9 @@ window.addEventListener('keydown', (e) => {
   if ((e.target as HTMLElement).closest('.tp-dfwv, input')) return;
   const pb = app.playback;
   switch (e.key) {
+    case 'Escape':
+      if (exporter.running) exporter.cancel();
+      break;
     case ' ':
       e.preventDefault();
       hud.togglePause();
@@ -93,6 +132,11 @@ window.addEventListener('keydown', (e) => {
       break;
     case 'ArrowLeft':
       if (pb) app.seek(pb.index - Math.max(1, Math.round(pb.commits.length * 0.02)));
+      break;
+    case 'm':
+      sound.enabled = !sound.enabled;
+      sound.applyVolume();
+      toast(sound.enabled ? 'Sound on' : 'Sound off');
       break;
     case 'h':
       hudVisible = !hudVisible;
@@ -126,6 +170,7 @@ function frame(now: number): void {
   if (!exporting) {
     app.advance(dt);
     hud.update(dt);
+    sound.tick(dt);
   }
   requestAnimationFrame(frame);
 }
