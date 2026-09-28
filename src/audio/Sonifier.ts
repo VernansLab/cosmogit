@@ -31,10 +31,16 @@ export class Sonifier {
 
   /** Must be called from a user gesture (browser autoplay rules). */
   async start(): Promise<void> {
-    if (this.started) return;
+    if (!this.started) this.build();
     await Tone.start();
-    this.started = true;
+  }
 
+  private get running(): boolean {
+    return this.started && Tone.getContext().state === 'running';
+  }
+
+  private build(): void {
+    this.started = true;
     const limiter = new Tone.Limiter(-2).toDestination();
     const reverb = new Tone.Reverb({ decay: 7, wet: 0.45 }).connect(limiter);
     const delay = new Tone.FeedbackDelay({ delayTime: '8n.', feedback: 0.32, wet: 0.22 }).connect(reverb);
@@ -82,7 +88,7 @@ export class Sonifier {
   }
 
   play(kind: ApplyKind, ext: string, author: number, strength: number, delay = 0): void {
-    if (!this.started || !this.enabled || this.budget < 1) return;
+    if (!this.running || !this.enabled || this.budget < 1) return;
     this.budget -= 1;
     const when = Tone.now() + delay + Math.random() * 0.02;
     const seed = hash32(ext);
@@ -107,7 +113,7 @@ export class Sonifier {
 
   /** A swell for large commits. */
   swell(size: number): void {
-    if (!this.started || !this.enabled) return;
+    if (!this.running || !this.enabled) return;
     const now = Tone.now();
     if (now - this.lastPad < 2.5) return;
     this.lastPad = now;

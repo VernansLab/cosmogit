@@ -180,4 +180,4 @@ export function setExporting(v: boolean): void {
 }
 requestAnimationFrame(frame);
 
-Object.assign(window, { app });
+Object.assign(window, { app, sound });
