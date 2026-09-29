@@ -1,4 +1,6 @@
-import { AdditiveBlending, BufferAttribute, BufferGeometry, type Color, Points, ShaderMaterial, Vector3, type WebGLRenderer } from 'three';
+import { cameraViewMatrix, clamp, exp, float, Fn, instancedArray, length, max, mix, pow, select, sin, sqrt, uniform, uv, varying, vec4 } from 'three/tsl';
+import { AdditiveBlending, type Color, PointsNodeMaterial, Sprite, type StorageBufferNode, Vector3 } from 'three/webgpu';
+import { DirtyRange } from './Stars';
 
 export const enum PType {
   Beam = 0,
@@ -9,157 +11,116 @@ export const enum PType {
   Flash = 5,
 }
 
-const vertex = /* glsl */ `
-  uniform float uTime;
-  uniform float uScale;
-  uniform float uMaxSize;
-  attribute vec3 aEnd;
-  attribute vec3 aCtrl;
-  attribute float aBirth;
-  attribute float aLife;
-  attribute vec3 aColor;
-  attribute float aSize;
-  attribute float aType;
-  varying vec3 vColor;
-  varying float vT;
-  varying float vType;
-
-  void main() {
-    float t = (uTime - aBirth) / aLife;
-    vT = t;
-    vType = aType;
-    vColor = aColor;
-    if (t < 0.0 || t > 1.0) {
-      gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
-      gl_PointSize = 0.0;
-      return;
-    }
-    vec3 p = position;
-    float size = aSize;
-    int type = int(aType + 0.5);
-    if (type == 0) {
-      // Beam: quadratic bezier from author to star, eased.
-      float e = t * t * (3.0 - 2.0 * t);
-      p = mix(mix(position, aCtrl, e), mix(aCtrl, aEnd, e), e);
-      size *= 0.6 + 0.8 * sin(t * 3.14159);
-    } else if (type == 1) {
-      // Spark: decelerating burst.
-      p = position + aCtrl * (1.0 - (1.0 - t) * (1.0 - t));
-      size *= 1.0 - t;
-    } else if (type == 2) {
-      // Implosion: rush inwards, accelerating.
-      p = mix(position, aEnd, t * t);
-      size *= 0.4 + t;
-    } else if (type == 3) {
-      // Dust: slow drift.
-      p = position + aCtrl * t;
-      size *= 1.0 - t * 0.5;
-    } else if (type == 4) {
-      // Shockwave ring grows.
-      size *= 0.15 + 1.0 * sqrt(t);
-    } else if (type == 5) {
-      // Flash.
-      size *= 0.5 + 0.8 * sqrt(t);
-    }
-    vec4 mv = modelViewMatrix * vec4(p, 1.0);
-    gl_Position = projectionMatrix * mv;
-    gl_PointSize = clamp(size * uScale / -mv.z, 0.0, uMaxSize);
-  }
-`;
-
-const fragment = /* glsl */ `
-  varying vec3 vColor;
-  varying float vT;
-  varying float vType;
-
-  void main() {
-    float d = length(gl_PointCoord - 0.5) * 2.0;
-    if (d > 1.0) discard;
-    int type = int(vType + 0.5);
-    float a;
-    if (type == 4) {
-      float w = 0.06 + 0.1 * vT;
-      a = exp(-pow((d - 0.85) / w, 2.0)) * pow(1.0 - vT, 1.5) * 1.5;
-    } else if (type == 5) {
-      a = (exp(-d * d * 8.0) * 2.0 + exp(-d * 3.0) * 0.4) * pow(1.0 - vT, 2.0);
-    } else if (type == 0) {
-      a = exp(-d * d * 10.0) * sin(vT * 3.14159) * 1.4;
-    } else if (type == 3) {
-      a = exp(-d * d * 6.0) * (1.0 - vT) * 0.5;
-    } else {
-      a = exp(-d * d * 12.0) * (1.0 - vT * vT);
-    }
-    gl_FragColor = vec4(vColor * a, 1.0);
-  }
-`;
-
 const CAPACITY = 1 << 16;
 const tmp = new Vector3();
 const tmp2 = new Vector3();
 
-/** Ring-buffered GPU particles; motion is computed analytically in the shader. */
+/**
+ * Ring-buffered GPU particles; motion is computed analytically in the vertex
+ * stage from four vec4s per particle:
+ *   a: start.xyz, birth    b: end.xyz, life    c: ctrl.xyz, type    d: rgb, size
+ */
 export class Particles {
-  readonly object: Points;
-  private geometry = new BufferGeometry();
-  private material: ShaderMaterial;
+  readonly object: Sprite;
+  private material: PointsNodeMaterial;
+  private buffers: StorageBufferNode<'vec4'>[];
   private head = 0;
-  private attrs: Record<string, BufferAttribute> = {};
-  private dirtyFrom = -1;
-  private dirtyTo = -1;
+  private dirty = new DirtyRange();
   private wrapped = false;
   /** Global multiplier on how many particles effects emit. */
   density = 1;
 
-  constructor(renderer: WebGLRenderer) {
-    const range = renderer.getContext().getParameter(renderer.getContext().ALIASED_POINT_SIZE_RANGE) as Float32Array;
-    const add = (name: string, size: number, fill = 0) => {
-      const a = new BufferAttribute(new Float32Array(CAPACITY * size).fill(fill), size);
-      this.geometry.setAttribute(name, a);
-      this.attrs[name] = a;
-    };
-    add('position', 3);
-    add('aEnd', 3);
-    add('aCtrl', 3);
-    add('aBirth', 1, -1000);
-    add('aLife', 1, 1);
-    add('aColor', 3);
-    add('aSize', 1);
-    add('aType', 1);
-    this.material = new ShaderMaterial({
-      vertexShader: vertex,
-      fragmentShader: fragment,
-      uniforms: {
-        uTime: { value: 0 },
-        uScale: { value: 300 },
-        uMaxSize: { value: Math.min(range[1], 512) },
-      },
-      blending: AdditiveBlending,
-      depthWrite: false,
-      transparent: true,
+  readonly uniforms = {
+    uTime: uniform(0),
+    uScale: uniform(300),
+    uMaxSize: uniform(400),
+  };
+
+  constructor() {
+    const [a, b, c, d] = (this.buffers = [0, 1, 2, 3].map(() => instancedArray(CAPACITY, 'vec4') as StorageBufferNode<'vec4'>));
+    const aArr = a.value.array as Float32Array;
+    for (let i = 0; i < CAPACITY; i++) aArr[i * 4 + 3] = -1000;
+    const u = this.uniforms;
+
+    const A = a.toAttribute();
+    const B = b.toAttribute();
+    const C = c.toAttribute();
+    const D = d.toAttribute();
+    const type = C.w;
+    const is = (t: PType) => type.greaterThan(t - 0.5).and(type.lessThan(t + 0.5));
+    const t = u.uTime.sub(A.w).div(B.w);
+    const live = t.greaterThanEqual(0).and(t.lessThanEqual(1));
+    const tc = clamp(t, 0, 1);
+
+    // Beam: quadratic bezier from author to star, eased.
+    const e = tc.mul(tc).mul(float(3).sub(tc.mul(2)));
+    const beamPos = mix(mix(A.xyz, C.xyz, e), mix(C.xyz, B.xyz, e), e);
+    const onec = float(1).sub(tc);
+    const sparkPos = A.xyz.add(C.xyz.mul(float(1).sub(onec.mul(onec))));
+    const implodePos = mix(A.xyz, B.xyz, tc.mul(tc));
+    const dustPos = A.xyz.add(C.xyz.mul(tc));
+    const pos = select(is(PType.Beam), beamPos, select(is(PType.Spark), sparkPos, select(is(PType.Implode), implodePos, select(is(PType.Dust), dustPos, A.xyz))));
+
+    const pi = Math.PI;
+    const sizeMul = select(
+      is(PType.Beam),
+      sin(tc.mul(pi)).mul(0.8).add(0.6),
+      select(
+        is(PType.Spark),
+        onec,
+        select(
+          is(PType.Implode),
+          tc.add(0.4),
+          select(is(PType.Dust), float(1).sub(tc.mul(0.5)), select(is(PType.Ring), sqrt(tc).add(0.15), sqrt(tc).mul(0.8).add(0.5))),
+        ),
+      ),
+    );
+    const depth = max(cameraViewMatrix.mul(vec4(pos, 1)).z.negate(), 0.001);
+    const px = D.w.mul(sizeMul).mul(u.uScale).div(depth);
+    const pointSize = select(live, clamp(px, 0, u.uMaxSize), float(0));
+
+    const vT = varying(tc);
+    const vType = varying(type);
+    const vColor = varying(D.xyz);
+
+    const shape = Fn(() => {
+      const dd = length(uv().sub(0.5)).mul(2);
+      const isT = (k: PType) => vType.greaterThan(k - 0.5).and(vType.lessThan(k + 0.5));
+      const w = vT.mul(0.1).add(0.06);
+      const ring = exp(pow(dd.sub(0.85).div(w), 2).negate()).mul(pow(float(1).sub(vT), 1.5)).mul(1.5);
+      const flash = exp(dd.mul(dd).mul(-8)).mul(2).add(exp(dd.mul(-3)).mul(0.4)).mul(pow(float(1).sub(vT), 2));
+      const beam = exp(dd.mul(dd).mul(-10)).mul(sin(vT.mul(pi))).mul(1.4);
+      const dust = exp(dd.mul(dd).mul(-6)).mul(float(1).sub(vT)).mul(0.5);
+      const spark = exp(dd.mul(dd).mul(-12)).mul(float(1).sub(vT.mul(vT)));
+      const alpha = select(isT(PType.Ring), ring, select(isT(PType.Flash), flash, select(isT(PType.Beam), beam, select(isT(PType.Dust), dust, spark))));
+      const fade = float(1).sub(clamp(dd.sub(0.97).mul(33), 0, 1));
+      return vec4(vColor.mul(alpha).mul(fade), 1);
     });
-    this.object = new Points(this.geometry, this.material);
+
+    this.material = new PointsNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending, sizeAttenuation: false });
+    this.material.positionNode = pos;
+    this.material.sizeNode = pointSize;
+    this.material.colorNode = shape();
+    this.object = new Sprite(this.material);
+    this.object.count = CAPACITY;
     this.object.frustumCulled = false;
   }
 
   set pixelScale(v: number) {
-    this.material.uniforms.uScale.value = v;
+    this.uniforms.uScale.value = v;
   }
 
   private emit(type: PType, start: Vector3, end: Vector3, ctrl: Vector3, color: Color, size: number, birth: number, life: number): void {
     const i = this.head;
     this.head = (this.head + 1) % CAPACITY;
     if (this.head === 0) this.wrapped = true;
-    const a = this.attrs;
-    a.position.setXYZ(i, start.x, start.y, start.z);
-    a.aEnd.setXYZ(i, end.x, end.y, end.z);
-    a.aCtrl.setXYZ(i, ctrl.x, ctrl.y, ctrl.z);
-    a.aBirth.setX(i, birth);
-    a.aLife.setX(i, life);
-    a.aColor.setXYZ(i, color.r, color.g, color.b);
-    a.aSize.setX(i, size);
-    a.aType.setX(i, type);
-    if (this.dirtyFrom === -1) this.dirtyFrom = i;
-    this.dirtyTo = i;
+    const [a, b, c, d] = this.buffers.map((n) => n.value.array as Float32Array);
+    const o = i * 4;
+    a[o] = start.x; a[o + 1] = start.y; a[o + 2] = start.z; a[o + 3] = birth;
+    b[o] = end.x; b[o + 1] = end.y; b[o + 2] = end.z; b[o + 3] = life;
+    c[o] = ctrl.x; c[o + 1] = ctrl.y; c[o + 2] = ctrl.z; c[o + 3] = type;
+    d[o] = color.r; d[o + 1] = color.g; d[o + 2] = color.b; d[o + 3] = size;
+    this.dirty.mark(i);
   }
 
   private count(n: number): number {
@@ -221,25 +182,24 @@ export class Particles {
   }
 
   clear(): void {
-    (this.attrs.aBirth.array as Float32Array).fill(-1000);
-    this.attrs.aBirth.needsUpdate = true;
-    this.dirtyFrom = -1;
+    const a = this.buffers[0].value.array as Float32Array;
+    for (let i = 0; i < CAPACITY; i++) a[i * 4 + 3] = -1000;
+    this.dirty.mark(0);
+    this.dirty.mark(CAPACITY - 1);
   }
 
   update(time: number): void {
-    this.material.uniforms.uTime.value = time;
-    if (this.dirtyFrom === -1) return;
-    for (const a of Object.values(this.attrs)) {
-      a.clearUpdateRanges();
-      if (this.wrapped || this.dirtyTo < this.dirtyFrom) {
-        // Wrapped around the ring: just upload it all.
-        a.needsUpdate = true;
-      } else {
-        a.addUpdateRange(this.dirtyFrom * a.itemSize, (this.dirtyTo - this.dirtyFrom + 1) * a.itemSize);
-        a.needsUpdate = true;
-      }
+    this.uniforms.uTime.value = time;
+    if (this.dirty.empty) return;
+    const whole = this.wrapped;
+    for (const n of this.buffers) {
+      const attr = n.value;
+      attr.clearUpdateRanges();
+      // After wrapping around the ring the dirty span is not contiguous: upload it all.
+      if (!whole) attr.addUpdateRange(this.dirty.from * 4, (this.dirty.to - this.dirty.from + 1) * 4);
+      attr.needsUpdate = true;
     }
+    this.dirty.reset();
     this.wrapped = false;
-    this.dirtyFrom = -1;
   }
 }

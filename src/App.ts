@@ -1,4 +1,4 @@
-import { Color, PerspectiveCamera, Scene, Vector3, WebGLRenderer } from 'three';
+import { Color, PerspectiveCamera, Scene, Vector3, WebGPURenderer } from 'three/webgpu';
 import { Director } from './camera/Director';
 import type { Commit, RepoLog } from './data/types';
 import { GalaxyLayout } from './layout/GalaxyLayout';
@@ -35,8 +35,8 @@ export const defaultAppSettings: AppSettings = {
   aperture: 18,
   starSize: 1.4,
   filaments: 0.8,
-  nebula: 0.55,
-  dust: 0.22,
+  nebula: 0.4,
+  dust: 0.14,
   particleDensity: 1,
   loop: false,
 };
@@ -56,7 +56,7 @@ const tmpA = new Vector3();
 const tmpB = new Vector3();
 
 export class App {
-  readonly renderer: WebGLRenderer;
+  readonly renderer: WebGPURenderer;
   readonly scene = new Scene();
   readonly camera: PerspectiveCamera;
   readonly director: Director;
@@ -68,7 +68,7 @@ export class App {
   playback: Playback | null = null;
   state = new RepoState();
   layout = new GalaxyLayout(this.state);
-  stars: Stars;
+  stars: Stars = new Stars(1, 1);
   filaments = new Filaments();
   dust = new GalacticDust();
   particles: Particles;
@@ -82,15 +82,29 @@ export class App {
   private width = 1;
   private height = 1;
 
-  constructor(readonly canvas: HTMLCanvasElement) {
-    this.renderer = new WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', preserveDrawingBuffer: false });
+  /** Create the app; resolves once the GPU device is ready. */
+  static async create(canvas: HTMLCanvasElement, opts: { forceWebGL?: boolean } = {}): Promise<App> {
+    const renderer = new WebGPURenderer({ canvas, antialias: false, powerPreference: 'high-performance', forceWebGL: opts.forceWebGL ?? false });
+    await renderer.init();
+    return new App(canvas, renderer);
+  }
+
+  /** 'WebGPU' or 'WebGL2' (the automatic fallback). */
+  get backendName(): string {
+    return (this.renderer.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend ? 'WebGPU' : 'WebGL2';
+  }
+
+  private constructor(
+    readonly canvas: HTMLCanvasElement,
+    renderer: WebGPURenderer,
+  ) {
+    this.renderer = renderer;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.camera = new PerspectiveCamera(55, 1, 0.1, 20000);
     this.camera.position.set(40, 30, 40);
     this.director = new Director(this.camera, canvas);
-    this.stars = new Stars(this.renderer);
-    this.particles = new Particles(this.renderer);
-    this.background = new Background(this.renderer.getPixelRatio());
+    this.particles = new Particles();
+    this.background = new Background();
     this.scene.add(this.background.object, this.dust.object, this.filaments.object, this.stars.object, this.particles.object);
     this.post = new Post(this.renderer, this.scene, this.camera);
     this.resize(canvas.clientWidth || window.innerWidth, canvas.clientHeight || window.innerHeight);
@@ -102,11 +116,10 @@ export class App {
     this.height = h;
     this.renderer.setPixelRatio(pixelRatio);
     this.renderer.setSize(w, h, false);
-    this.post.setSize(w, h);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
-    // World-size → pixel factor for point sprites.
-    const scale = (h * pixelRatio) / (2 * Math.tan((this.camera.fov * Math.PI) / 360));
+    // World-size → CSS-pixel factor for sprites (the renderer applies the pixel ratio).
+    const scale = h / (2 * Math.tan((this.camera.fov * Math.PI) / 360));
     this.stars.pixelScale = scale * this.settings.starSize;
     this.particles.pixelScale = scale;
     this.dust.pixelScale = scale;
@@ -118,6 +131,13 @@ export class App {
 
   load(log: RepoLog): void {
     this.log = log;
+    // GPU buffers are sized once per log: enough ids to replay all of it.
+    const cap = RepoState.capacityFor(log.commits);
+    this.scene.remove(this.stars.object);
+    this.stars.dispose();
+    this.stars = new Stars(cap.files, cap.dirs);
+    this.scene.add(this.stars.object);
+    this.applySettings();
     this.playback = new Playback(log.commits, {
       secondsPerDay: this.settings.secondsPerDay,
       autoSkipSeconds: this.settings.autoSkipSeconds,
@@ -263,7 +283,7 @@ export class App {
     }
 
     this.particles.update(this.time);
-    this.stars.update(this.time, this.layout);
+    this.stars.update(this.renderer, this.time, dt, this.layout);
     this.filaments.update(this.state, this.layout);
     this.dust.update(dt, this.time, this.layout.radius);
     this.director.update(dt, this.layout.radius);

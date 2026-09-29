@@ -1,6 +1,6 @@
 # Cosmogit
 
-Your git history as a living 3D galaxy. Inspired by [Gource](https://gource.io/), rebuilt for the browser with Three.js.
+Your git history as a living 3D galaxy. Inspired by [Gource](https://gource.io/), rebuilt for the browser with Three.js on WebGPU (with automatic WebGL2 fallback).
 
 - **Directories are star systems.** The repo root is the galactic core, and subtrees fan out into spiral arms.
 - **Files are stars.** Colour comes from the extension and size from the line count. Recently touched stars burn blue-white and cool to a dim red.
@@ -13,6 +13,7 @@ Your git history as a living 3D galaxy. Inspired by [Gource](https://gource.io/)
 - **Procedural sound**: a pentatonic note per change. File type sets the pitch, diff size the loudness, and the author the instrument.
 - **MP4 export** at 720p to 4K, 30/60 fps, rendered offline at a fixed timestep with the HUD burned in.
 - HDR bloom, chromatic aberration, bokeh depth of field, nebula skybox and film grain.
+- **GPU-driven:** star motion runs in a WebGPU compute shader; 100k files render in about 3 ms a frame.
 
 ## Usage
 
@@ -28,7 +29,7 @@ Or extract a log and drop it on the page (`pnpm dev`):
 pnpm extract ~/code/some-repo public/logs/some-repo.json
 ```
 
-The viewer also accepts Gource custom logs (`gource --output-custom-log`).
+The viewer also accepts Gource custom logs (`gource --output-custom-log`). Add `?webgl` to the URL to force the WebGL2 fallback.
 
 Logs in `public/logs/` show up as buttons on the start screen.
 
@@ -53,7 +54,7 @@ cli/extract.ts      git log --raw --numstat -> events JSON
 src/data/           log parsers (git, Gource custom log)
 src/sim/            RepoState (file tree over time), Playback (clock, idle skipping, seek)
 src/layout/         deterministic galaxy layout with spring easing
-src/render/         stars, filaments, particles, contributors, dust, nebula, post FX
+src/render/         TSL materials + compute: stars, filaments, particles, contributors, dust, nebula, post FX
 src/camera/         cinematic director + OrbitControls handoff
 src/audio/          Tone.js sonifier
 src/export/         fixed-timestep WebCodecs MP4 export (mediabunny)

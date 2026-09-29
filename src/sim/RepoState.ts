@@ -22,6 +22,8 @@ export interface DirNode {
   files: Map<string, FileNode>;
   /** Number of live files in this subtree. */
   weight: number;
+  /** Bumped when this directory's own file list changes (not its subdirectories'). */
+  filesVersion: number;
 }
 
 export type ApplyKind = 'add' | 'modify' | 'delete' | 'rename';
@@ -73,6 +75,7 @@ export class RepoState {
       dirs: new Map(),
       files: new Map(),
       weight: 0,
+      filesVersion: 0,
     };
   }
 
@@ -112,6 +115,7 @@ export class RepoState {
       alive: true,
     };
     dir.files.set(name, file);
+    dir.filesVersion++;
     this.files.set(path, file);
     this.bumpWeight(dir, 1);
     this.version++;
@@ -121,6 +125,7 @@ export class RepoState {
   private removeFile(file: FileNode): void {
     file.alive = false;
     file.dir.files.delete(file.name);
+    file.dir.filesVersion++;
     this.files.delete(file.path);
     this.bumpWeight(file.dir, -1);
     // Prune empty directories.
@@ -130,6 +135,18 @@ export class RepoState {
       d = d.parent;
     }
     this.version++;
+  }
+
+  /** How many file / directory ids have been handed out so far. */
+  get idCounts(): { files: number; dirs: number } {
+    return { files: this.nextFileId, dirs: this.nextDirId };
+  }
+
+  /** Ids needed to replay a whole log, so GPU buffers can be sized once. */
+  static capacityFor(commits: Commit[]): { files: number; dirs: number } {
+    const s = new RepoState();
+    for (const c of commits) s.apply(c);
+    return s.idCounts;
   }
 
   apply(commit: Commit): Applied[] {

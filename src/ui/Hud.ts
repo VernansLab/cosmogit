@@ -130,7 +130,7 @@ export class Hud {
     this.slowClock = 0;
 
     const st = this.app.state;
-    this.stats.textContent = `${pb.index.toLocaleString()} / ${pb.commits.length.toLocaleString()} commits\n${st.files.size.toLocaleString()} files · ${Math.round(this.fps)} fps`;
+    this.stats.textContent = `${pb.index.toLocaleString()} / ${pb.commits.length.toLocaleString()} commits\n${st.files.size.toLocaleString()} files · ${Math.round(this.fps)} fps · ${this.app.backendName}`;
 
     // Contributors active in the last few seconds, most active first.
     const now = this.app.time;

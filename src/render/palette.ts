@@ -1,4 +1,4 @@
-import { Color } from 'three';
+import { Color } from 'three/webgpu';
 import { hash01 } from '../layout/hash';
 
 const EXT_COLORS: Record<string, string> = {

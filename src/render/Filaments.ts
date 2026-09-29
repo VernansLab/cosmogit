@@ -1,53 +1,26 @@
-import { AdditiveBlending, BufferAttribute, BufferGeometry, LineSegments, ShaderMaterial } from 'three';
+import { attribute, uniform, vec3, vec4 } from 'three/tsl';
+import { AdditiveBlending, BufferAttribute, BufferGeometry, LineBasicNodeMaterial, LineSegments } from 'three/webgpu';
 import type { GalaxyLayout } from '../layout/GalaxyLayout';
 import type { DirNode, RepoState } from '../sim/RepoState';
-
-const vertex = /* glsl */ `
-  attribute float aFade;
-  varying float vFade;
-  void main() {
-    vFade = aFade;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`;
-
-const fragment = /* glsl */ `
-  uniform vec3 uColor;
-  uniform float uOpacity;
-  varying float vFade;
-  void main() {
-    gl_FragColor = vec4(uColor * uOpacity * vFade, 1.0);
-  }
-`;
 
 /** Faint cosmic-web strands from every system to its parent. */
 export class Filaments {
   readonly object: LineSegments;
   private geometry = new BufferGeometry();
-  private material: ShaderMaterial;
   private cap = 0;
   private positions!: BufferAttribute;
   private fade!: BufferAttribute;
 
-  constructor() {
-    this.material = new ShaderMaterial({
-      vertexShader: vertex,
-      fragmentShader: fragment,
-      uniforms: {
-        uColor: { value: [0.45, 0.6, 1.0] },
-        uOpacity: { value: 0.8 },
-      },
-      blending: AdditiveBlending,
-      depthWrite: false,
-      transparent: true,
-    });
-    this.grow(256);
-    this.object = new LineSegments(this.geometry, this.material);
-    this.object.frustumCulled = false;
-  }
+  readonly uniforms = {
+    uOpacity: uniform(0.8),
+  };
 
-  get uniforms() {
-    return this.material.uniforms;
+  constructor() {
+    const material = new LineBasicNodeMaterial({ transparent: true, depthWrite: false, blending: AdditiveBlending });
+    material.colorNode = vec4(vec3(0.45, 0.6, 1.0).mul(this.uniforms.uOpacity).mul(attribute<'float'>('aFade', 'float')), 1);
+    this.grow(256);
+    this.object = new LineSegments(this.geometry, material);
+    this.object.frustumCulled = false;
   }
 
   private grow(cap: number): void {

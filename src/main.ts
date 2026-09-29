@@ -10,7 +10,9 @@ const canvas = document.getElementById('view') as HTMLCanvasElement;
 const drop = document.getElementById('drop')!;
 const toastEl = document.getElementById('toast')!;
 
-const app = new App(canvas);
+const params = new URLSearchParams(location.search);
+// ?webgl forces the WebGL2 fallback, for comparison and debugging.
+const app = await App.create(canvas, { forceWebGL: params.has('webgl') });
 const hud = new Hud(app);
 const sound = new Sonifier();
 app.hooks = {
@@ -110,7 +112,6 @@ fetch('/logs/index.json')
   })
   .catch(() => {});
 
-const params = new URLSearchParams(location.search);
 const logParam = params.get('log');
 if (logParam) loadUrl(logParam.startsWith('/') ? logParam : `/${logParam}`).catch((err) => toast(`Could not load ${logParam}: ${err.message}`, 5000));
 

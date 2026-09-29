@@ -1,4 +1,4 @@
-import { CanvasTexture, Color, Group, SRGBColorSpace, Sprite, SpriteMaterial, Vector3 } from 'three';
+import { CanvasTexture, Color, Group, SRGBColorSpace, Sprite, SpriteMaterial, Vector3 } from 'three/webgpu';
 import type { Author } from '../data/types';
 import type { GalaxyLayout } from '../layout/GalaxyLayout';
 import type { Applied } from '../sim/RepoState';
@@ -16,7 +16,6 @@ interface Pilot {
   color: Color;
   group: Group;
   avatar: Sprite;
-  label: Sprite;
   pos: Vector3;
   vel: Vector3;
   target: Vector3;
@@ -39,19 +38,30 @@ function initials(name: string): string {
   return s.toUpperCase();
 }
 
-function avatarTexture(name: string, color: Color): CanvasTexture {
-  const size = 128;
+/**
+ * Avatar badge with the name baked in underneath. The badge is centred in
+ * the canvas so the sprite's centre stays on the pilot; the canvas is twice
+ * as tall as the badge so there is room for the label below.
+ */
+function avatarTexture(name: string, color: Color, withLabel: boolean): { tex: CanvasTexture; aspect: number } {
+  const badge = 128;
+  const font = '500 30px system-ui, sans-serif';
   const c = document.createElement('canvas');
-  c.width = c.height = size;
   const g = c.getContext('2d')!;
-  const glow = g.createRadialGradient(64, 64, 20, 64, 64, 64);
+  g.font = font;
+  const textW = withLabel ? Math.ceil(g.measureText(name).width) + 24 : 0;
+  c.width = Math.max(badge, textW);
+  c.height = badge * 2;
+  const cx = c.width / 2;
+  const cy = c.height / 2;
+  const glow = g.createRadialGradient(cx, cy, 20, cx, cy, 64);
   glow.addColorStop(0, cssColor(color));
   glow.addColorStop(0.55, `${cssColor(color)}55`);
   glow.addColorStop(1, `${cssColor(color)}00`);
   g.fillStyle = glow;
-  g.fillRect(0, 0, size, size);
+  g.fillRect(cx - 64, cy - 64, 128, 128);
   g.beginPath();
-  g.arc(64, 64, 30, 0, Math.PI * 2);
+  g.arc(cx, cy, 30, 0, Math.PI * 2);
   g.fillStyle = '#0b0d18';
   g.fill();
   g.lineWidth = 4;
@@ -61,29 +71,17 @@ function avatarTexture(name: string, color: Color): CanvasTexture {
   g.font = '600 26px system-ui, sans-serif';
   g.textAlign = 'center';
   g.textBaseline = 'middle';
-  g.fillText(initials(name), 64, 66);
+  g.fillText(initials(name), cx, cy + 2);
+  if (withLabel) {
+    g.font = font;
+    g.fillStyle = 'rgba(255,255,255,0.92)';
+    g.shadowColor = 'rgba(0,0,0,0.9)';
+    g.shadowBlur = 8;
+    g.fillText(name, cx, cy + 62);
+  }
   const tex = new CanvasTexture(c);
   tex.colorSpace = SRGBColorSpace;
-  return tex;
-}
-
-function labelTexture(text: string): { tex: CanvasTexture; aspect: number } {
-  const c = document.createElement('canvas');
-  const g = c.getContext('2d')!;
-  const font = '500 34px system-ui, sans-serif';
-  g.font = font;
-  const w = Math.ceil(g.measureText(text).width) + 24;
-  c.width = w;
-  c.height = 48;
-  g.font = font;
-  g.fillStyle = 'rgba(255,255,255,0.92)';
-  g.shadowColor = 'rgba(0,0,0,0.9)';
-  g.shadowBlur = 8;
-  g.textBaseline = 'middle';
-  g.fillText(text, 12, 25);
-  const tex = new CanvasTexture(c);
-  tex.colorSpace = SRGBColorSpace;
-  return { tex, aspect: w / 48 };
+  return { tex, aspect: c.width / c.height };
 }
 
 /**
@@ -114,13 +112,12 @@ export class Contributors {
     if (p) return p;
     const author = this.authors[index] ?? { name: '?', email: '' };
     const color = authorColor(author.name);
-    const avatar = new Sprite(new SpriteMaterial({ map: avatarTexture(author.name, color), depthWrite: false, sizeAttenuation: false, transparent: true }));
-    const { tex, aspect } = labelTexture(author.name);
-    const label = new Sprite(new SpriteMaterial({ map: tex, depthWrite: false, sizeAttenuation: false, transparent: true }));
-    label.center.set(0.5, 1.6);
-    label.userData.aspect = aspect;
+    const labelled = avatarTexture(author.name, color, true);
+    const plain = avatarTexture(author.name, color, false);
+    const avatar = new Sprite(new SpriteMaterial({ map: labelled.tex, depthWrite: false, sizeAttenuation: false, transparent: true }));
+    avatar.userData = { labelled, plain };
     const group = new Group();
-    group.add(avatar, label);
+    group.add(avatar);
     group.renderOrder = 10;
     this.object.add(group);
     // Enter from far out, above the galactic plane.
@@ -132,7 +129,6 @@ export class Contributors {
       color,
       group,
       avatar,
-      label,
       pos: new Vector3(Math.cos(a) * r, r * 0.4, Math.sin(a) * r),
       vel: new Vector3(),
       target: new Vector3(),
@@ -206,11 +202,15 @@ export class Contributors {
       p.opacity += (want - p.opacity) * Math.min(1, dt * 3);
       p.group.visible = p.opacity > 0.01;
       p.group.position.copy(p.pos);
-      (p.avatar.material as SpriteMaterial).opacity = p.opacity;
-      (p.label.material as SpriteMaterial).opacity = p.opacity * 0.9;
-      p.label.visible = this.showLabels;
-      p.avatar.scale.setScalar(this.scale);
-      p.label.scale.set(this.scale * 0.45 * p.label.userData.aspect, this.scale * 0.45, 1);
+      const mat = p.avatar.material as SpriteMaterial;
+      mat.opacity = p.opacity;
+      const skin = this.showLabels ? p.avatar.userData.labelled : p.avatar.userData.plain;
+      if (mat.map !== skin.tex) {
+        mat.map = skin.tex;
+        mat.needsUpdate = true;
+      }
+      // The canvas is two badges tall; keep the badge itself at `scale`.
+      p.avatar.scale.set(this.scale * 2 * skin.aspect, this.scale * 2, 1);
 
       // Comet trail: drop particles evenly along the path travelled this frame.
       if (p.opacity > 0.05) {

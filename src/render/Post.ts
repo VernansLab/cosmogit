@@ -1,16 +1,8 @@
-import {
-  BlendFunction,
-  BloomEffect,
-  ChromaticAberrationEffect,
-  EffectComposer,
-  EffectPass,
-  NoiseEffect,
-  RenderPass,
-  ToneMappingEffect,
-  ToneMappingMode,
-  VignetteEffect,
-} from 'postprocessing';
-import { HalfFloatType, type PerspectiveCamera, type Scene, Vector2, type WebGLRenderer } from 'three';
+import { bloom } from 'three/examples/jsm/tsl/display/BloomNode.js';
+import { chromaticAberration } from 'three/examples/jsm/tsl/display/ChromaticAberrationNode.js';
+import { film } from 'three/examples/jsm/tsl/display/FilmNode.js';
+import { float, length, mix, pass, vec2, renderOutput, screenUV, smoothstep, uniform, vec4 } from 'three/tsl';
+import { ACESFilmicToneMapping, type Node, type PerspectiveCamera, RenderPipeline, type Scene, type WebGPURenderer } from 'three/webgpu';
 
 export interface PostSettings {
   bloom: boolean;
@@ -25,57 +17,58 @@ export interface PostSettings {
 
 export const defaultPostSettings: PostSettings = {
   bloom: true,
-  bloomIntensity: 1.6,
-  bloomThreshold: 0.15,
+  bloomIntensity: 0.9,
+  bloomThreshold: 0.25,
   chromatic: true,
-  chromaticAmount: 0.0012,
+  chromaticAmount: 0.12,
   vignette: true,
   grain: true,
-  grainAmount: 0.06,
+  grainAmount: 0.12,
 };
 
-/** HDR post chain: bloom → ACES tonemapping → chromatic aberration, vignette, grain. */
+/**
+ * HDR post chain on three's node pipeline:
+ * scene → bloom → ACES tonemap → chromatic aberration → vignette → film grain.
+ */
 export class Post {
-  readonly composer: EffectComposer;
-  private bloom: BloomEffect;
-  private tone: ToneMappingEffect;
-  private chroma: ChromaticAberrationEffect;
-  private vignette: VignetteEffect;
-  private noise: NoiseEffect;
-  private hdrPass: EffectPass;
-  private lensPass: EffectPass;
+  readonly pipeline: RenderPipeline;
+  private bloomNode;
+  private uChroma = uniform(0);
+  private uVignette = uniform(1);
+  private uGrain = uniform(0.12);
   /** Extra aberration that decays over time; kicked by big commits. */
   private kick = 0;
 
   constructor(
-    renderer: WebGLRenderer,
+    renderer: WebGPURenderer,
     scene: Scene,
     camera: PerspectiveCamera,
     public settings: PostSettings = { ...defaultPostSettings },
   ) {
-    this.composer = new EffectComposer(renderer, { frameBufferType: HalfFloatType, multisampling: 0 });
-    this.composer.addPass(new RenderPass(scene, camera));
-
-    this.bloom = new BloomEffect({ mipmapBlur: true, luminanceThreshold: 0.15, luminanceSmoothing: 0.2, intensity: 1.6, radius: 0.75, levels: 8 });
-    this.tone = new ToneMappingEffect({ mode: ToneMappingMode.ACES_FILMIC });
-    this.hdrPass = new EffectPass(camera, this.bloom, this.tone);
-    this.composer.addPass(this.hdrPass);
-
-    this.chroma = new ChromaticAberrationEffect({ offset: new Vector2(0.001, 0.001), radialModulation: true, modulationOffset: 0.2 });
-    this.vignette = new VignetteEffect({ offset: 0.3, darkness: 0.65 });
-    this.noise = new NoiseEffect({ blendFunction: BlendFunction.OVERLAY, premultiply: false });
-    this.lensPass = new EffectPass(camera, this.chroma, this.vignette, this.noise);
-    this.composer.addPass(this.lensPass);
+    renderer.toneMapping = ACESFilmicToneMapping;
+    this.pipeline = new RenderPipeline(renderer);
+    const scenePass = pass(scene, camera);
+    const color = scenePass.getTextureNode('output');
+    this.bloomNode = bloom(color, 0.9, 0.6, 0.25);
+    const hdr = color.add(this.bloomNode);
+    const toned = renderOutput(hdr);
+    // The CA node's typings don't expose it as a vec4 node, though it is one.
+    const lens = chromaticAberration(toned, this.uChroma, vec2(0.5, 0.5), float(1.1)) as unknown as Node<'vec4'>;
+    const dist = length(screenUV.sub(0.5)).mul(1.414);
+    const vignette = mix(float(1), float(1).sub(smoothstep(0.35, 1.05, dist).mul(0.75)), this.uVignette);
+    const shaded = vec4(lens.rgb.mul(vignette), 1);
+    this.pipeline.outputColorTransform = false;
+    this.pipeline.outputNode = film(shaded, this.uGrain);
     this.apply();
   }
 
   /** Push settings into the effects. Call after editing `settings`. */
   apply(): void {
     const s = this.settings;
-    this.bloom.intensity = s.bloom ? s.bloomIntensity : 0;
-    this.bloom.luminanceMaterial.threshold = s.bloomThreshold;
-    this.vignette.blendMode.opacity.value = s.vignette ? 1 : 0;
-    this.noise.blendMode.opacity.value = s.grain ? s.grainAmount : 0;
+    this.bloomNode.strength.value = s.bloom ? s.bloomIntensity : 0;
+    this.bloomNode.threshold.value = s.bloomThreshold;
+    this.uVignette.value = s.vignette ? 1 : 0;
+    this.uGrain.value = s.grain ? s.grainAmount : 0;
   }
 
   /** Momentary lens distortion, 0..1. */
@@ -83,14 +76,9 @@ export class Post {
     this.kick = Math.min(1, this.kick + amount);
   }
 
-  setSize(w: number, h: number): void {
-    this.composer.setSize(w, h);
-  }
-
   render(dt: number): void {
     this.kick *= Math.exp(-dt * 4);
-    const a = this.settings.chromatic ? this.settings.chromaticAmount * (1 + this.kick * 6) : 0;
-    this.chroma.offset.set(a, a * 0.6);
-    this.composer.render(dt);
+    this.uChroma.value = this.settings.chromatic ? this.settings.chromaticAmount * (1 + this.kick * 6) : 0;
+    this.pipeline.render();
   }
 }

@@ -1,4 +1,4 @@
-import { type PerspectiveCamera, Vector3 } from 'three';
+import { type PerspectiveCamera, Vector3 } from 'three/webgpu';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 interface Hit {

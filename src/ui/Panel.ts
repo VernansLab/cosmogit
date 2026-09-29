@@ -53,7 +53,7 @@ export class Panel {
     fx.addBinding(post, 'bloomIntensity', { label: 'intensity', min: 0, max: 5 }).on('change', applyPost);
     fx.addBinding(post, 'bloomThreshold', { label: 'threshold', min: 0, max: 1.5 }).on('change', applyPost);
     fx.addBinding(post, 'chromatic').on('change', applyPost);
-    fx.addBinding(post, 'chromaticAmount', { label: 'aberration', min: 0, max: 0.01, step: 0.0001 }).on('change', applyPost);
+    fx.addBinding(post, 'chromaticAmount', { label: 'aberration', min: 0, max: 1.5, step: 0.01 }).on('change', applyPost);
     fx.addBinding(post, 'vignette').on('change', applyPost);
     fx.addBinding(post, 'grain').on('change', applyPost);
     fx.addBinding(post, 'grainAmount', { label: 'grain amt', min: 0, max: 0.4 }).on('change', applyPost);
