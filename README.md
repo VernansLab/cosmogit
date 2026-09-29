@@ -2,6 +2,21 @@
 
 Your git history as a living 3D galaxy, rebuilt for the browser with Three.js on WebGPU (with automatic WebGL2 fallback). A tribute to [Gource](https://gource.io/).
 
+![Express's history as a galaxy: file clusters, contributors and the commit ticker](docs/screenshots/express.jpg)
+
+<table>
+  <tr>
+    <td><img src="docs/screenshots/zustand-skim.jpg" alt="zustand seen edge-on, with its contributors hovering over the disc"></td>
+    <td><img src="docs/screenshots/combined.jpg" alt="zustand and express combined into one galaxy, one arm per repo"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>zustand, skimming the galactic plane</sub></td>
+    <td align="center"><sub>zustand + express combined: one arm per repo</sub></td>
+  </tr>
+</table>
+
+<p align="center"><img src="docs/screenshots/start.jpg" alt="The start page: open a repo folder, right in the browser" width="70%"></p>
+
 - **Directories are star systems.** The repo root is the galactic core, and subtrees fan out into spiral arms.
 - **Files are stars.** Colour comes from the extension and size from the line count. Recently touched stars burn blue-white and cool to a dim red.
 - **Contributors are comets.** They fly to the files they change and fire beams at them.
