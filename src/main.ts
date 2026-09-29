@@ -4,6 +4,7 @@ import { Exporter } from './export/Exporter';
 import { parseAny } from './data/parse';
 import type { RepoLog } from './data/types';
 import { Hud } from './ui/Hud';
+import { Labels } from './ui/Labels';
 import { exportChoice, Panel } from './ui/Panel';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
@@ -15,11 +16,16 @@ const params = new URLSearchParams(location.search);
 const app = await App.create(canvas, { forceWebGL: params.has('webgl') });
 const hud = new Hud(app);
 const sound = new Sonifier();
+const labels = new Labels(app);
 app.hooks = {
   onLoad: (log) => hud.onLoad(log),
   onCommit: (c, log) => hud.onCommit(c, log),
   // The sound lands when the beam hits the star.
-  onAction: ({ author, applied }, strength) => sound.play(applied.kind, applied.file.ext, author, strength, 0.45),
+  onAction: ({ author, applied }, strength) => {
+    sound.play(applied.kind, applied.file.ext, author, strength, 0.45);
+    labels.onAction(applied.kind, applied.file);
+  },
+  onSeek: () => labels.clear(),
   onBigCommit: (_c, size) => sound.swell(size),
 };
 
@@ -59,13 +65,14 @@ const exporter = new Exporter(
     done: (msg) => toast(msg, 8000),
   },
   sound,
+  labels,
 );
 const record = () => {
   if (exporter.running) exporter.cancel();
   else if (app.playback) void exporter.run(exportChoice);
 };
 recordBtn.addEventListener('click', record);
-new Panel(app, { audio: audioSettings, exportVideo: (choice) => exporter.run(choice) });
+new Panel(app, { audio: audioSettings, labels, exportVideo: (choice) => exporter.run(choice) });
 
 let toastTimer = 0;
 export function toast(msg: string, ms = 2200): void {
@@ -236,6 +243,7 @@ function frame(now: number): void {
   if (!exporting) {
     app.advance(dt);
     hud.update(dt);
+    labels.update();
     sound.tick(dt);
   }
   requestAnimationFrame(frame);
@@ -246,4 +254,4 @@ export function setExporting(v: boolean): void {
 }
 requestAnimationFrame(frame);
 
-Object.assign(window, { app, sound });
+Object.assign(window, { app, sound, labels });

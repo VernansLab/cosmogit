@@ -81,6 +81,7 @@ export class Exporter {
     private app: App,
     private host: ExportHost,
     private sound?: Sonifier,
+    private labels?: { update(): void; draw(g: CanvasRenderingContext2D, scale: number): void },
   ) {}
 
   cancel(): void {
@@ -146,6 +147,8 @@ export class Exporter {
         app.advance(dt);
         this.sound?.tick(dt);
         g.drawImage(app.renderer.domElement, 0, 0, width, height);
+        this.labels?.update();
+        this.labels?.draw(g, height / 1080);
         this.drawOverlay(g, width, height, recent);
         await video.add(frames * dt, dt);
         frames++;

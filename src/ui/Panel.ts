@@ -4,6 +4,7 @@ import type { App } from '../App';
 export interface PanelActions {
   exportVideo?: (opts: ExportChoice) => void;
   audio?: { enabled: boolean; volume: number; onChange: () => void };
+  labels?: { showNew: boolean };
 }
 
 export interface ExportChoice {
@@ -40,6 +41,8 @@ export class Panel {
     look.addBinding(s, 'nebula', { min: 0, max: 1.5 }).on('change', apply);
     look.addBinding(s, 'dust', { label: 'galactic dust', min: 0, max: 1.5 }).on('change', apply);
     look.addBinding(s, 'particleDensity', { label: 'particles', min: 0, max: 3 }).on('change', apply);
+
+    if (actions.labels) look.addBinding(actions.labels, 'showNew', { label: 'new file names' });
 
     const lp = app.layout.params;
     const layout = this.pane.addFolder({ title: 'Layout', expanded: false });

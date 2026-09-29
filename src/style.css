@@ -14,6 +14,7 @@ html, body { margin: 0; height: 100%; background: #020308; color: var(--fg); fon
 #hud { position: fixed; inset: 0; pointer-events: none; transition: opacity 0.4s; }
 #hud.hidden { opacity: 0; }
 #hud > * { pointer-events: auto; }
+#hud > .labels, #hud > .pick-card { pointer-events: none !important; }
 
 .hud-top-left { position: absolute; top: 22px; left: 26px; max-width: min(60vw, 720px); pointer-events: none !important; }
 .repo { font: 500 12px var(--mono); letter-spacing: 0.3em; text-transform: uppercase; color: var(--accent); text-shadow: 0 0 12px rgba(127, 178, 255, 0.6); }
@@ -89,3 +90,12 @@ html, body { margin: 0; height: 100%; background: #020308; color: var(--fg); fon
   /* The settings panel is for the desktop; keep phones clean. */
   .tp-dfwv { display: none !important; }
 }
+
+/* ---- File names in the scene ---- */
+.labels { position: absolute; inset: 0; overflow: hidden; }
+.float-label { position: absolute; left: 0; top: 0; font: 500 12px var(--mono); color: var(--c); white-space: nowrap; text-shadow: 0 0 8px rgba(0, 0, 0, 0.95), 0 0 14px var(--c); will-change: transform, opacity; }
+.pick-card { position: absolute; left: 0; top: 0; min-width: 160px; max-width: 320px; padding: 10px 14px; border-radius: 10px; background: rgba(8, 10, 24, 0.82); border: 1px solid rgba(160, 190, 255, 0.3); backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); transition: opacity 0.2s; }
+.pick-card .pc-name { font: 600 14px var(--mono); word-break: break-all; }
+.pick-card .pc-path { font: 400 11px var(--mono); color: var(--dim); margin: 2px 0 6px; word-break: break-all; }
+.pick-card .pc-meta { font: 400 11.5px var(--sans); color: var(--dim); line-height: 1.5; }
+@media (max-width: 700px) { .float-label { font-size: 10.5px; } .pick-card { max-width: 240px; } }

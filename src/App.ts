@@ -46,6 +46,7 @@ export interface AppHooks {
   onAction?: (action: Action, strength: number) => void;
   onBigCommit?: (commit: Commit, size: number) => void;
   onLoad?: (log: RepoLog) => void;
+  onSeek?: () => void;
 }
 
 const BEAM_TIME = 0.45;
@@ -166,6 +167,7 @@ export class App {
     this.stars.clear();
     this.particles.clear();
     this.contributors?.clear();
+    this.hooks.onSeek?.();
     const skipped = this.playback.seek(index);
     for (const c of skipped) this.state.apply(c);
     this.layout.snap();
