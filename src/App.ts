@@ -29,7 +29,7 @@ export interface AppSettings {
 }
 
 export const defaultAppSettings: AppSettings = {
-  secondsPerDay: 0.6,
+  secondsPerDay: 1.2,
   autoSkipSeconds: 1.5,
   heatDecay: 8,
   aperture: 18,

@@ -55,7 +55,7 @@ export class Director {
   locked = false;
   returnAfter = 10;
   /** 0 = calm, slow orbit only; 1 = restless, frequent dramatic shots. */
-  energy = 0.65;
+  energy = 0.45;
   /** How much of the frame should be the whole galaxy vs. the hotspot (0..1). */
   context = 0.25;
 
@@ -165,7 +165,7 @@ export class Director {
       }
     }
     // Calmer cameras hold shots longer.
-    const base = 16 - this.energy * 8;
+    const base = 24 - this.energy * 10;
     this.shot = { kind, start: this.time, duration: base * (0.7 + Math.random() * 0.6), spin: Math.random() < 0.5 ? -1 : 1 };
   }
 
@@ -207,20 +207,20 @@ export class Director {
     let lookAt = c;
     let distance = framed;
     let elevation = 0.45 + 0.25 * Math.sin(this.time * 0.05);
-    let orbit = 0.06 + 0.1 * e;
-    let lookLambda = 1.2;
+    let orbit = 0.025 + 0.05 * e;
+    let lookLambda = 0.6;
     switch (shot.kind) {
       case 'swoop':
         // Dive in towards the action and back out again.
-        distance = framed * (1 - (0.5 + 0.25 * e) * Math.sin(phase * Math.PI));
-        orbit *= 1.8;
+        distance = framed * (1 - (0.35 + 0.2 * e) * Math.sin(phase * Math.PI));
+        orbit *= 1.4;
         elevation = 0.3 + 0.3 * Math.cos(phase * Math.PI);
         break;
       case 'skim':
         // Glide just above the galactic plane.
         elevation = 0.06 + 0.05 * Math.sin(this.time * 0.3);
         distance = framed * 0.8;
-        orbit *= 1.4;
+        orbit *= 1.2;
         break;
       case 'overhead':
         elevation = 1.25;
@@ -233,7 +233,7 @@ export class Director {
           distance = Math.min(framed, 18 + galaxyRadius * 0.15);
           elevation = 0.35;
           orbit *= 0.8;
-          lookLambda = 2.2;
+          lookLambda = 1.1;
         }
         break;
       case 'wide':
@@ -250,16 +250,16 @@ export class Director {
     this.wide = damp(this.wide, 0, 0.35, dt);
     this.dolly = damp(this.dolly, 0, 0.8, dt);
     const want = (distance * (1 - this.wide) + (galaxyRadius * 2.4 + 10) * this.wide) * (1 - this.dolly);
-    this.distance = damp(this.distance, want, 0.6, dt);
+    this.distance = damp(this.distance, want, 0.3, dt);
 
     // Ease the orbit speed too, so direction changes between shots are smooth.
-    this.azimuthSpeed = damp(this.azimuthSpeed, orbit * shot.spin, 0.5, dt);
+    this.azimuthSpeed = damp(this.azimuthSpeed, orbit * shot.spin, 0.25, dt);
     this.azimuth += this.azimuthSpeed * dt;
-    this.elevation = damp(this.elevation, elevation + this.wide * 0.3, 0.45, dt);
+    this.elevation = damp(this.elevation, elevation + this.wide * 0.3, 0.25, dt);
 
     // A little banking into the turn.
     const wantRoll = -this.azimuthSpeed * 0.9 * e;
-    this.roll = damp(this.roll, wantRoll, 0.8, dt);
+    this.roll = damp(this.roll, wantRoll, 0.5, dt);
 
     const ce = Math.cos(this.elevation);
     this.camera.position.set(

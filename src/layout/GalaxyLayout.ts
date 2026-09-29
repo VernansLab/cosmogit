@@ -23,7 +23,7 @@ export const defaultLayoutParams: LayoutParams = {
   spiralTwist: 0.55,
   discFlatten: 0.3,
   tilt: 0.55,
-  spin: 0.25,
+  spin: 0.12,
 };
 
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));

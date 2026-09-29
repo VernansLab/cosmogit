@@ -93,7 +93,7 @@ export class Contributors {
   readonly object = new Group();
   private pilots = new Map<number, Pilot>();
   /** Actions per second each pilot fires once it has arrived. */
-  fireRate = 40;
+  fireRate = 25;
   /** Seconds of inactivity before a pilot fades away. */
   idleFade = 6;
   showLabels = true;
@@ -201,7 +201,7 @@ export class Contributors {
       }
 
       // Critically damped spring towards the target.
-      const k = 5;
+      const k = 3;
       tmp.copy(p.target).sub(p.pos).multiplyScalar(k * k);
       tmp.addScaledVector(p.vel, -2 * k);
       p.vel.addScaledVector(tmp, Math.min(dt, 0.05));
