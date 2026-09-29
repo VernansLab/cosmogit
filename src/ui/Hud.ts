@@ -106,7 +106,8 @@ export class Hud {
     if (!commit.msg) return;
     const line = document.createElement('div');
     line.className = 'line';
-    line.innerHTML = `<b style="color:${cssColor(authorColor(author))}">${escapeHtml(author)}</b>  ${escapeHtml(commit.msg)}`;
+    const repo = commit.repo !== undefined && log.repos ? `<i>${escapeHtml(log.repos[commit.repo])}</i> ` : '';
+    line.innerHTML = `${repo}<b style="color:${cssColor(authorColor(author))}">${escapeHtml(author)}</b>  ${escapeHtml(commit.msg)}`;
     this.ticker.prepend(line);
     while (this.ticker.children.length > 5) this.ticker.lastElementChild!.remove();
     [...this.ticker.children].forEach((el, i) => ((el as HTMLElement).style.opacity = String(1 - i * 0.2)));

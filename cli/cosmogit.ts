@@ -2,13 +2,13 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'vite';
-import { extract } from './extract';
+import { extractPath } from './source';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
 const repo = argv.find((a) => !a.startsWith('--')) ?? '.';
 
-const log = extract(repo, { firstParent: argv.includes('--first-parent') });
+const log = extractPath(repo, { firstParent: argv.includes('--first-parent') });
 const slug = log.repo.replace(/[^\w.-]+/g, '_');
 mkdirSync(join(root, 'logs'), { recursive: true });
 writeFileSync(join(root, 'logs', `${slug}.json`), JSON.stringify(log));

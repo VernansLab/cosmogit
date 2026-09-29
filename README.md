@@ -23,9 +23,9 @@ Open **https://cosmogit.web.app**, then run this inside any git repo:
 curl -fsSL https://cosmogit.web.app/get | node
 ```
 
-It writes `<repo>.cosmogit.json` to the current directory (add `node - --first-parent` for mainline only). Drop that file on the page, or click **Browse** to pick it. Nothing is uploaded: the script runs locally and the page reads the file in your browser.
+Run it in a folder that *contains* several repos (a polyrepo workspace) and it combines them into one galaxy, one arm per repo. It writes `<name>.cosmogit.json` to the current directory (add `node - --first-parent` for mainline only). Drop that file on the page, or click **Browse** to pick it. Nothing is uploaded: the script runs locally and the page reads the file in your browser.
 
-By [VernansLab](https://vernanslab.ai).
+By Max Flach · [VernansLab](https://vernanslab.ai).
 
 ## Usage (local)
 
@@ -38,7 +38,8 @@ pnpm cosmogit ~/code/some-repo --first-parent   # mainline only (exact final tre
 Or extract a log and drop it on the page (`pnpm dev`):
 
 ```sh
-pnpm extract ~/code/some-repo logs/some-repo.json
+pnpm extract ~/code/some-repo --out logs/some-repo.json
+pnpm extract ~/code/api ~/code/web --name platform --out logs/platform.json   # combine repos
 ```
 
 The viewer also accepts Gource custom logs (`gource --output-custom-log`). Add `?webgl` to the URL to force the WebGL2 fallback.
@@ -79,7 +80,8 @@ History is linearised in `--date-order`. Long-lived release branches that keep t
 ## Share a private repo by link
 
 ```sh
-pnpm share ~/code/my-repo   # pull, extract (emails stripped), build, deploy
+pnpm share ~/code/my-repo                 # pull, extract (emails stripped), build, deploy
+pnpm share ~/code/workspace --name mdl     # a folder of repos, combined
 ```
 
 Prints an unlisted link like `https://cosmogit.web.app/s/<id>` (not indexed, but anyone with it can see commit messages, file paths and author names). Re-running updates the same link; `--new` rotates it. The data lives in the gitignored `shared/` folder and is copied into the build, so deploy from the machine that has it, or the links disappear.
@@ -98,4 +100,4 @@ Cosmogit exists because of **[Gource](https://gource.io/)** by Andrew Caudwell, 
 
 Built with [Three.js](https://threejs.org/) (WebGPU + TSL), [Tone.js](https://tonejs.github.io/) and [Mediabunny](https://mediabunny.dev/).
 
-By [VernansLab](https://vernanslab.ai).
+By Max Flach · [VernansLab](https://vernanslab.ai).

@@ -1,7 +1,7 @@
 /**
  * Publish a repo's history at an unlisted link:
  *
- *   pnpm share ~/code/my-repo [--first-parent] [--new] [--no-pull]
+ *   pnpm share <repo | folder of repos> [--name title] [--first-parent] [--new] [--no-pull]
  *
  * Pulls the repo (fast-forward only), extracts its history, strips author
  * emails, writes shared/<id>.json and deploys. The same repo keeps the same
@@ -16,7 +16,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { extract } from './extract';
+import { extractPath, reposFor } from './source';
 
 const SITE = 'https://cosmogit.web.app';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -24,7 +24,9 @@ const sharedDir = join(root, 'shared');
 const indexFile = join(sharedDir, 'index.json');
 
 const argv = process.argv.slice(2);
-const repoArg = argv.find((a) => !a.startsWith('--'));
+const nameAt = argv.indexOf('--name');
+const title = nameAt >= 0 ? argv[nameAt + 1] : undefined;
+const repoArg = argv.find((a, i) => !a.startsWith('--') && i !== nameAt + 1);
 if (!repoArg) {
   console.error('usage: pnpm share <repo> [--first-parent] [--new] [--no-pull]');
   process.exit(1);
@@ -37,12 +39,15 @@ function run(cmd: string, args: string[], cwd = root): boolean {
 }
 
 if (!argv.includes('--no-pull')) {
-  console.log(`↓ pulling ${repo}`);
-  if (!run('git', ['-C', repo, 'pull', '--ff-only'])) console.warn('  pull failed; sharing the history as it is locally');
+  for (const r of reposFor(repo)) {
+    console.log(`↓ pulling ${r}`);
+    if (!run('git', ['-C', r, 'pull', '--ff-only'])) console.warn('  pull failed; sharing the history as it is locally');
+  }
 }
 
-const log = extract(repo, { firstParent: argv.includes('--first-parent') });
+const log = extractPath(repo, { firstParent: argv.includes('--first-parent') });
 for (const a of log.authors) a.email = '';
+if (title) log.repo = title;
 
 mkdirSync(sharedDir, { recursive: true });
 const index: Record<string, string> = existsSync(indexFile) ? JSON.parse(readFileSync(indexFile, 'utf8')) : {};

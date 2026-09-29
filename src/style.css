@@ -22,6 +22,7 @@ html, body { margin: 0; height: 100%; background: #020308; color: var(--fg); fon
 .ticker { margin-top: 10px; display: flex; flex-direction: column; gap: 5px; }
 .ticker .line { font: 400 13px var(--mono); color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: tick-in 0.35s ease-out; transition: opacity 1.2s; }
 .ticker .line b { font-weight: 600; }
+.ticker .line i { font-style: normal; color: var(--accent); border: 1px solid rgba(127, 178, 255, 0.35); border-radius: 4px; padding: 0 5px; margin-right: 4px; font-size: 0.9em; }
 .ticker .line:first-child { color: var(--fg); }
 @keyframes tick-in { from { opacity: 0; transform: translateY(-6px); } }
 

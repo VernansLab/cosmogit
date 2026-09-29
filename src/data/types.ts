@@ -18,6 +18,8 @@ export interface Commit {
   msg: string;
   isMerge: boolean;
   changes: Change[];
+  /** Index into RepoLog.repos when several repos were combined. */
+  repo?: number;
 }
 
 export interface Author {
@@ -29,4 +31,6 @@ export interface RepoLog {
   repo: string;
   authors: Author[];
   commits: Commit[];
+  /** Names of the combined repos; each is a top-level folder in the galaxy. */
+  repos?: string[];
 }

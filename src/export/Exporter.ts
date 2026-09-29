@@ -218,7 +218,9 @@ export class Exporter {
       g.fillText(name, pad, y);
       const nw = g.measureText(`${name}  `).width;
       g.fillStyle = '#c8d0f0';
-      const msg = c.msg.length > 80 ? `${c.msg.slice(0, 79)}…` : c.msg;
+      const repo = c.repo !== undefined && app.log?.repos ? `[${app.log.repos[c.repo]}] ` : '';
+      const text = repo + c.msg;
+      const msg = text.length > 80 ? `${text.slice(0, 79)}…` : text;
       g.fillText(msg, pad + nw, y);
     });
     g.globalAlpha = 1;
