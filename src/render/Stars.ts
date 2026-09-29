@@ -213,6 +213,8 @@ export class Stars {
       .mul(px)
       .div(max(total.mul(total), 1e-4))
       .mul(total.mul(total).div(shown.mul(shown)).mul(0.7).add(0.3));
+    // Stars right in front of the lens fade out instead of filling the screen with haze.
+    const nearFade = smoothstep(u.uFocus.mul(0.06), u.uFocus.mul(0.3), depth);
     const pointSize = select(L.x.lessThan(-1e5).or(size.lessThanEqual(0)), float(0), clamp(shown, 0, u.uMaxSize));
 
     // Hot stars burn blue-white; cold ones sink into a dim, reddened version of their colour.
@@ -221,6 +223,7 @@ export class Stars {
     const color = mix(cold, hot, heat)
       .add(K.xyz.mul(pulse).mul(2))
       .mul(max(energy, 0.03))
+      .mul(nearFade)
       .mul(blur.mul(1.5).add(1));
     const vColor = varying(color);
     const vBlur = varying(blur);

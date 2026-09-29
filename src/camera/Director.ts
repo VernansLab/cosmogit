@@ -58,6 +58,8 @@ export class Director {
   energy = 0.45;
   /** How much of the frame should be the whole galaxy vs. the hotspot (0..1). */
   context = 0.25;
+  /** Viewport width / height, set by the app on resize. */
+  aspect = 16 / 9;
 
   private hits: Hit[] = [];
   private target = new Vector3();
@@ -82,7 +84,19 @@ export class Director {
     this.controls = new OrbitControls(camera, dom);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.08;
-    this.controls.addEventListener('start', () => this.takeOver());
+    // Only an actual drag, pinch or scroll takes the camera over. A plain tap
+    // (e.g. the one that unlocks sound) leaves the auto camera running.
+    let pressed = false;
+    this.controls.addEventListener('start', () => {
+      pressed = true;
+      if (this.mode === 'auto') this.controls.target.copy(this.target);
+    });
+    this.controls.addEventListener('change', () => {
+      if (pressed) this.takeOver();
+    });
+    this.controls.addEventListener('end', () => {
+      pressed = false;
+    });
   }
 
   get focusDistance(): number {
@@ -249,7 +263,10 @@ export class Director {
 
     this.wide = damp(this.wide, 0, 0.35, dt);
     this.dolly = damp(this.dolly, 0, 0.8, dt);
-    const want = (distance * (1 - this.wide) + (galaxyRadius * 2.4 + 10) * this.wide) * (1 - this.dolly);
+    // Framing is tuned for landscape; narrower screens (phones in portrait)
+    // need to pull back so the galaxy fits horizontally too.
+    const fit = this.aspect < 1.3 ? Math.pow(1.3 / this.aspect, 0.9) : 1;
+    const want = (distance * (1 - this.wide) + (galaxyRadius * 2.4 + 10) * this.wide) * (1 - this.dolly) * fit;
     this.distance = damp(this.distance, want, 0.3, dt);
 
     // Ease the orbit speed too, so direction changes between shots are smooth.

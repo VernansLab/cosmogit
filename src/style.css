@@ -73,3 +73,19 @@ html, body { margin: 0; height: 100%; background: #020308; color: var(--fg); fon
 .toast.show { opacity: 1; }
 
 .tp-dfwv { top: 70px !important; width: 280px !important; }
+
+/* ---- Phones ---- */
+@media (max-width: 700px) {
+  .hud-top-left { top: calc(14px + env(safe-area-inset-top)); left: 16px; right: 16px; max-width: none; }
+  .repo { font-size: 10px; }
+  .date { font-size: 26px; margin-top: 4px; }
+  .ticker { margin-top: 6px; gap: 3px; }
+  .ticker .line { font-size: 10.5px; }
+  .ticker .line:nth-child(n + 3) { display: none; }
+  .hud-top-right, .exts, .stats, #record, .credit { display: none; }
+  .hud-bottom { left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); gap: 10px; }
+  .timeline { height: 34px; }
+  .icon { width: 34px; height: 34px; }
+  /* The settings panel is for the desktop; keep phones clean. */
+  .tp-dfwv { display: none !important; }
+}

@@ -118,6 +118,9 @@ export class App {
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+    this.director.aspect = w / h;
+    // Bokeh is in CSS pixels; keep it proportional on small screens.
+    this.stars.uniforms.uAperture.value = this.settings.aperture * Math.min(1, Math.min(w, h) / 900);
     // World-size → CSS-pixel factor for sprites (the renderer applies the pixel ratio).
     const scale = h / (2 * Math.tan((this.camera.fov * Math.PI) / 360));
     this.stars.pixelScale = scale * this.settings.starSize;
@@ -180,7 +183,6 @@ export class App {
       this.playback.opts.autoSkipSeconds = s.autoSkipSeconds;
     }
     this.stars.uniforms.uHeatDecay.value = s.heatDecay;
-    this.stars.uniforms.uAperture.value = s.aperture;
     this.filaments.uniforms.uOpacity.value = s.filaments;
     this.background.uniforms.uIntensity.value = s.nebula;
     this.dust.uniforms.uOpacity.value = s.dust;
