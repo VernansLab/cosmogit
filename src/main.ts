@@ -111,19 +111,32 @@ window.addEventListener('drop', async (e) => {
   }
 });
 
-// Sample logs extracted into public/logs.
-fetch('/logs/index.json')
-  .then((r) => (r.ok ? r.json() : []))
-  .then((names: string[]) => {
-    const box = document.getElementById('samples')!;
-    for (const n of names) {
-      const b = document.createElement('button');
-      b.textContent = n.replace(/\.json$/, '');
-      b.onclick = () => loadUrl(`/logs/${n}`).catch((err) => toast(err.message));
-      box.append(b);
-    }
-  })
-  .catch(() => {});
+// Demo buttons: the bundled public demo, plus (in dev) logs extracted into ./logs.
+const samplesBox = document.getElementById('samples')!;
+function addSample(label: string, url: string): void {
+  const b = document.createElement('button');
+  b.textContent = label;
+  b.onclick = () => loadUrl(url).catch((err) => toast(err.message));
+  samplesBox.append(b);
+}
+addSample('zustand', '/demo/zustand.json');
+if (import.meta.env.DEV) {
+  fetch('/logs/index.json')
+    .then((r) => (r.ok ? r.json() : []))
+    .then((names: string[]) => names.forEach((n) => addSample(n.replace(/\.json$/, ''), `/logs/${n}`)))
+    .catch(() => {});
+}
+
+document.getElementById('copy')!.addEventListener('click', async (e) => {
+  e.stopPropagation();
+  const text = document.getElementById('oneliner')!.textContent ?? '';
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('Copied. Paste it in a terminal inside your repo.');
+  } catch {
+    toast(text, 6000);
+  }
+});
 
 const logParam = params.get('log');
 if (logParam) loadUrl(logParam.startsWith('/') ? logParam : `/${logParam}`).catch((err) => toast(`Could not load ${logParam}: ${err.message}`, 5000));

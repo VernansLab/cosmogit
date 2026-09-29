@@ -6,7 +6,8 @@
 - `pnpm dev`: viewer on http://localhost:5178 (`?log=logs/<name>.json` preloads a log)
 - `pnpm cosmogit <repo> [--first-parent]`: extract + open
 - `pnpm extract <repo> [out.json]`
-- `pnpm test` (vitest), `pnpm typecheck`, `pnpm build`
+- `pnpm test` (vitest), `pnpm typecheck`, `pnpm build` (also bundles `cli/get.ts` → `dist/get`)
+- `pnpm deploy`: Firebase Hosting, project `cosmogit` (account max@flach.io) → https://cosmogit.web.app
 
 ## Architecture notes
 - `App.advance(dt)` is the single clock: every shader uses `app.time`, never `performance.now()`. The MP4 exporter relies on this to step at a fixed dt.
@@ -19,7 +20,11 @@
 - GPU buffers are sized once per log (`RepoState.capacityFor`), so file/dir ids never outgrow them.
 - Additive sprites don't write depth, so DoF is done per-star in the vertex shader (bokeh), not as a post pass. Post (bloom, ACES, CA, vignette, grain) is three's `RenderPipeline`.
 - A change's star effects fire when the contributor's beam arrives (`BEAM_TIME` in App.ts), not at commit time.
-- `public/logs/*.json` is gitignored (extracted user data).
+- `logs/*.json` is gitignored (extracted user data).
 
 ## Verifying visually
 Background Chrome tabs pause rAF. Drive frames manually via `window.app.advance(1/60)` in the console.
+
+## Privacy
+- Local logs live in `./logs` (served by the dev server only). Never put user logs in `public/`: everything there ships in the build and gets deployed.
+- `public/demo/zustand.json` is the one public demo (emails stripped).

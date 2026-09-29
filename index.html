@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cosmogit</title>
+    <meta name="description" content="Your git history as a living 3D galaxy. By VernansLab." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
@@ -33,12 +34,20 @@
     <div id="drop" class="drop">
       <div class="drop-card">
         <h1>Cosmogit</h1>
-        <p>Drop a <code>git log</code> JSON from <code>pnpm extract &lt;repo&gt;</code>, or a Gource custom log, anywhere on this page.</p>
-        <p class="hint">Or launch straight from a repo: <code>pnpm cosmogit ~/code/my-repo</code></p>
-        <div id="samples" class="samples"></div>
+        <p class="tagline">Your git history as a living 3D galaxy.</p>
+        <p>1. Run this inside any git repo:</p>
+        <div class="oneliner">
+          <code id="oneliner">curl -fsSL https://cosmogit.web.app/get | node</code>
+          <button id="copy" title="Copy">Copy</button>
+        </div>
+        <p>2. Drop the <code>.cosmogit.json</code> file it writes anywhere on this page.</p>
+        <p class="hint">Needs git and Node. Your history never leaves your machine: the file is read in your browser. Gource custom logs work too.</p>
+        <div id="samples" class="samples"><span class="try">Or try a demo:</span></div>
+        <div class="byline">By VernansLab</div>
       </div>
     </div>
     <div id="toast" class="toast"></div>
+    <div class="credit">Cosmogit · By VernansLab</div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

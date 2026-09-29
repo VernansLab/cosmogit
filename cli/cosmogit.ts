@@ -10,8 +10,8 @@ const repo = argv.find((a) => !a.startsWith('--')) ?? '.';
 
 const log = extract(repo, { firstParent: argv.includes('--first-parent') });
 const slug = log.repo.replace(/[^\w.-]+/g, '_');
-mkdirSync(join(root, 'public/logs'), { recursive: true });
-writeFileSync(join(root, 'public/logs', `${slug}.json`), JSON.stringify(log));
+mkdirSync(join(root, 'logs'), { recursive: true });
+writeFileSync(join(root, 'logs', `${slug}.json`), JSON.stringify(log));
 console.log(`${log.repo}: ${log.commits.length} commits, ${log.authors.length} authors`);
 
 const server = await createServer({ root, server: { open: `/?log=logs/${slug}.json` } });

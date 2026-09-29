@@ -15,7 +15,19 @@ Your git history as a living 3D galaxy. Inspired by [Gource](https://gource.io/)
 - HDR bloom, chromatic aberration, bokeh depth of field, nebula skybox and film grain.
 - **GPU-driven:** star motion runs in a WebGPU compute shader; 100k files render in about 3 ms a frame.
 
-## Usage
+## Try it
+
+Open **https://cosmogit.web.app**, then run this inside any git repo:
+
+```sh
+curl -fsSL https://cosmogit.web.app/get | node
+```
+
+It writes `<repo>.cosmogit.json` to the current directory (add `node - --first-parent` for mainline only). Drop that file on the page. Nothing is uploaded: the script runs locally and the page reads the file in your browser.
+
+By VernansLab.
+
+## Usage (local)
 
 ```sh
 pnpm install
@@ -26,12 +38,12 @@ pnpm cosmogit ~/code/some-repo --first-parent   # mainline only (exact final tre
 Or extract a log and drop it on the page (`pnpm dev`):
 
 ```sh
-pnpm extract ~/code/some-repo public/logs/some-repo.json
+pnpm extract ~/code/some-repo logs/some-repo.json
 ```
 
 The viewer also accepts Gource custom logs (`gource --output-custom-log`). Add `?webgl` to the URL to force the WebGL2 fallback.
 
-Logs in `public/logs/` show up as buttons on the start screen.
+Logs in `logs/` (gitignored, dev server only, never part of a build) show up as buttons on the start screen.
 
 ### Keys
 
@@ -63,3 +75,11 @@ src/export/         fixed-timestep WebCodecs MP4 export (mediabunny)
 ```
 
 History is linearised in `--date-order`. Long-lived release branches that keep touching files deleted on master can leave a few extra stars behind; `--first-parent` gives an exact tree.
+
+## Deploy
+
+```sh
+pnpm deploy   # build + firebase deploy --only hosting (project: cosmogit)
+```
+
+`pnpm build` also bundles `cli/get.ts` into `dist/get`, the script behind the one-liner.

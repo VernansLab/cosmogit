@@ -1,19 +1,32 @@
-import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
 
-/** Serves /logs/index.json listing the extracted logs in public/logs. */
-function logIndex(): Plugin {
+/**
+ * Dev only: serves your extracted logs from ./logs at /logs/<name>.json, plus
+ * /logs/index.json listing them. They live outside public/ on purpose, so a
+ * production build (and deploy) never includes anyone's private history.
+ */
+function localLogs(): Plugin {
   return {
-    name: 'log-index',
+    name: 'local-logs',
     configureServer(server) {
-      server.middlewares.use('/logs/index.json', (_req, res) => {
-        let names: string[] = [];
-        try {
-          names = readdirSync(join(server.config.root, 'public/logs')).filter((n) => n.endsWith('.json') && n !== 'index.json');
-        } catch {}
+      const dir = join(server.config.root, 'logs');
+      server.middlewares.use('/logs', (req, res, next) => {
+        const name = decodeURIComponent((req.url ?? '/').split('?')[0].replace(/^\//, ''));
+        if (name === 'index.json') {
+          let names: string[] = [];
+          try {
+            names = readdirSync(dir).filter((n) => n.endsWith('.json'));
+          } catch {}
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(names));
+          return;
+        }
+        const file = join(dir, name.replace(/[^\w.-]+/g, '_'));
+        if (!name.endsWith('.json') || !existsSync(file)) return next();
         res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify(names));
+        res.end(readFileSync(file));
       });
     },
   };
@@ -49,7 +62,7 @@ function saveExports(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [logIndex(), saveExports()],
+  plugins: [localLogs(), saveExports()],
   server: { port: 5178 },
   build: { target: 'es2022', chunkSizeWarningLimit: 2000 },
 });

@@ -50,11 +50,20 @@ html, body { margin: 0; height: 100%; background: #020308; color: var(--fg); fon
 .drop { position: fixed; inset: 0; display: grid; place-items: center; background: radial-gradient(ellipse at center, rgba(20, 24, 60, 0.55), rgba(2, 3, 8, 0.85)); transition: opacity 0.4s; }
 .drop.hidden { opacity: 0; pointer-events: none; }
 .drop.over .drop-card { border-color: var(--accent); box-shadow: 0 0 60px rgba(127, 178, 255, 0.35); }
-.drop-card { max-width: 520px; padding: 36px 40px; border-radius: 18px; border: 1px dashed rgba(160, 190, 255, 0.35); background: rgba(8, 10, 24, 0.7); backdrop-filter: blur(12px); transition: all 0.2s; }
+.drop-card { max-width: 580px; padding: 36px 40px; border-radius: 18px; border: 1px dashed rgba(160, 190, 255, 0.35); background: rgba(8, 10, 24, 0.7); backdrop-filter: blur(12px); transition: all 0.2s; }
 .drop-card h1 { margin: 0 0 14px; font: 700 34px var(--sans); letter-spacing: -0.02em; background: linear-gradient(90deg, #9ec5ff, #d59bff); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .drop-card p { color: var(--dim); line-height: 1.55; margin: 8px 0; }
 .drop-card code { font: 400 12.5px var(--mono); color: var(--fg); background: rgba(255, 255, 255, 0.06); padding: 2px 6px; border-radius: 4px; }
-.samples { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.samples { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; }
+.samples .try { color: var(--dim); font-size: 13px; margin-right: 4px; }
+.tagline { color: var(--fg) !important; font-size: 16px; margin-top: -4px !important; margin-bottom: 18px !important; }
+.oneliner { display: flex; align-items: stretch; gap: 0; margin: 10px 0 14px; border: 1px solid rgba(127, 178, 255, 0.35); border-radius: 10px; overflow: hidden; background: rgba(0, 0, 0, 0.35); }
+.oneliner code { flex: 1; min-width: 0; padding: 12px 14px !important; background: none !important; font: 400 13px var(--mono) !important; color: #cfe0ff !important; white-space: nowrap; overflow-x: auto; }
+.oneliner button { flex: none; font: 500 12px var(--sans); color: var(--fg); background: rgba(127, 178, 255, 0.18); border: none; border-left: 1px solid rgba(127, 178, 255, 0.35); padding: 0 16px; cursor: pointer; }
+.oneliner button:hover { background: rgba(127, 178, 255, 0.3); }
+.byline { margin-top: 22px; font: 500 11px var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim); }
+.credit { position: fixed; right: 20px; bottom: 64px; font: 500 10px var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: rgba(220, 228, 255, 0.35); pointer-events: none; }
+@media (max-width: 600px) { .drop-card { margin: 0 16px; padding: 26px 22px; } .credit { display: none; } }
 .samples button { font: 500 13px var(--sans); color: var(--fg); background: rgba(127, 178, 255, 0.12); border: 1px solid rgba(127, 178, 255, 0.3); padding: 7px 14px; border-radius: 999px; cursor: pointer; }
 .samples button:hover { background: rgba(127, 178, 255, 0.25); }
 

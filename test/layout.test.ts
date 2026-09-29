@@ -46,7 +46,7 @@ describe('GalaxyLayout', () => {
 
   it('lays out a real repo without overlapping sibling systems', () => {
     let log;
-    try { log = JSON.parse(readFileSync('public/logs/zustand.json', 'utf8')); } catch { return; }
+    try { log = JSON.parse(readFileSync('public/demo/zustand.json', 'utf8')); } catch { return; }
     const s = new RepoState();
     for (const c of log.commits) s.apply(c);
     const l = new GalaxyLayout(s);
