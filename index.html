@@ -10,7 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/src/style.css" />
   </head>
-  <body>
+  <!-- Until the app is up, keep a dropped file from navigating away from the page. -->
+  <body ondragover="event.preventDefault()" ondrop="event.preventDefault()">
     <canvas id="view"></canvas>
     <div id="hud">
       <div class="hud-top-left">
@@ -40,7 +41,11 @@
           <code id="oneliner">curl -fsSL https://cosmogit.web.app/get | node</code>
           <button id="copy" title="Copy">Copy</button>
         </div>
-        <p>2. Drop the <code>.cosmogit.json</code> file it writes anywhere on this page.</p>
+        <p>2. Drop the <code>.cosmogit.json</code> file it writes anywhere on this page, or</p>
+        <label class="browse">
+          Browse for the file…
+          <input id="file" type="file" accept=".json,.log,.txt,application/json,text/plain" hidden />
+        </label>
         <p class="hint">Needs git and Node. Your history never leaves your machine: the file is read in your browser. Gource custom logs work too.</p>
         <div id="samples" class="samples"><span class="try">Or try a demo:</span></div>
         <div class="byline">By VernansLab</div>

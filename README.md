@@ -23,7 +23,7 @@ Open **https://cosmogit.web.app**, then run this inside any git repo:
 curl -fsSL https://cosmogit.web.app/get | node
 ```
 
-It writes `<repo>.cosmogit.json` to the current directory (add `node - --first-parent` for mainline only). Drop that file on the page. Nothing is uploaded: the script runs locally and the page reads the file in your browser.
+It writes `<repo>.cosmogit.json` to the current directory (add `node - --first-parent` for mainline only). Drop that file on the page, or click **Browse** to pick it. Nothing is uploaded: the script runs locally and the page reads the file in your browser.
 
 By VernansLab.
 
@@ -75,6 +75,14 @@ src/export/         fixed-timestep WebCodecs MP4 export (mediabunny)
 ```
 
 History is linearised in `--date-order`. Long-lived release branches that keep touching files deleted on master can leave a few extra stars behind; `--first-parent` gives an exact tree.
+
+## Share a private repo by link
+
+```sh
+pnpm share ~/code/my-repo   # pull, extract (emails stripped), build, deploy
+```
+
+Prints an unlisted link like `https://cosmogit.web.app/s/<id>` (not indexed, but anyone with it can see commit messages, file paths and author names). Re-running updates the same link; `--new` rotates it. The data lives in the gitignored `shared/` folder and is copied into the build, so deploy from the machine that has it, or the links disappear.
 
 ## Deploy
 

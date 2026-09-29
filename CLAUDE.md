@@ -28,3 +28,4 @@ Background Chrome tabs pause rAF. Drive frames manually via `window.app.advance(
 ## Privacy
 - Local logs live in `./logs` (served by the dev server only). Never put user logs in `public/`: everything there ships in the build and gets deployed.
 - `public/demo/zustand.json` is the one public demo (emails stripped).
+- `shared/` (gitignored) holds `pnpm share` data, copied to `dist/s/` on build. A deploy from a machine without it removes every shared link.

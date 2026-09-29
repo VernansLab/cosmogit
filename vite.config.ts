@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
 
@@ -28,6 +28,43 @@ function localLogs(): Plugin {
         res.setHeader('Content-Type', 'application/json');
         res.end(readFileSync(file));
       });
+    },
+  };
+}
+
+/**
+ * Shared links: shared/<id>.json (gitignored, written by `pnpm share`) is
+ * served at /s/<id>.json in dev and copied to dist/s/ on build.
+ */
+function sharedLogs(): Plugin {
+  let root = '';
+  let outDir = '';
+  const files = () => {
+    try {
+      return readdirSync(join(root, 'shared')).filter((n) => n.endsWith('.json') && n !== 'index.json');
+    } catch {
+      return [];
+    }
+  };
+  return {
+    name: 'shared-logs',
+    configResolved(config) {
+      root = config.root;
+      outDir = join(config.root, config.build.outDir);
+    },
+    configureServer(server) {
+      server.middlewares.use('/s', (req, res, next) => {
+        const name = (req.url ?? '/').split('?')[0].replace(/^\//, '');
+        if (!files().includes(name)) return next();
+        res.setHeader('Content-Type', 'application/json');
+        res.end(readFileSync(join(root, 'shared', name)));
+      });
+    },
+    closeBundle() {
+      const names = files();
+      if (!names.length) return;
+      mkdirSync(join(outDir, 's'), { recursive: true });
+      for (const n of names) copyFileSync(join(root, 'shared', n), join(outDir, 's', n));
     },
   };
 }
@@ -62,7 +99,7 @@ function saveExports(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [localLogs(), saveExports()],
+  plugins: [localLogs(), sharedLogs(), saveExports()],
   server: { port: 5178 },
   build: { target: 'es2022', chunkSizeWarningLimit: 2000 },
 });

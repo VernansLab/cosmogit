@@ -81,6 +81,7 @@ function start(log: RepoLog): void {
     return;
   }
   drop.classList.add('hidden');
+  document.title = `${log.repo} · Cosmogit`;
   app.load(log);
   history.replaceState(null, '', location.search || location.pathname);
 }
@@ -99,17 +100,28 @@ window.addEventListener('dragover', (e) => {
   drop.classList.add('over');
 });
 window.addEventListener('dragleave', () => drop.classList.remove('over'));
-window.addEventListener('drop', async (e) => {
-  e.preventDefault();
-  drop.classList.remove('over');
-  const file = e.dataTransfer?.files[0];
-  if (!file) return;
+async function loadFile(file: File): Promise<void> {
   try {
-    start(parseAny(await file.text(), file.name.replace(/\.[^.]+$/, '')));
+    start(parseAny(await file.text(), file.name.replace(/(\.cosmogit)?\.[^.]+$/, '')));
   } catch (err) {
     toast(`Could not read ${file.name}: ${(err as Error).message}`, 4000);
   }
+}
+window.addEventListener('drop', (e) => {
+  e.preventDefault();
+  drop.classList.remove('over');
+  const file = e.dataTransfer?.files[0];
+  if (file) void loadFile(file);
 });
+const picker = document.getElementById('file') as HTMLInputElement;
+const onPick = () => {
+  const file = picker.files?.[0];
+  if (file) void loadFile(file);
+  picker.value = '';
+};
+picker.addEventListener('change', onPick);
+// A file picked while the GPU was still initialising is still sitting in the input.
+if (picker.files?.length) onPick();
 
 // Demo buttons: the bundled public demo, plus (in dev) logs extracted into ./logs.
 const samplesBox = document.getElementById('samples')!;
@@ -137,6 +149,24 @@ document.getElementById('copy')!.addEventListener('click', async (e) => {
     toast(text, 6000);
   }
 });
+
+// Shared links: /s/<id> loads /s/<id>.json.
+const shared = /^\/s\/([\w-]+)\/?$/.exec(location.pathname);
+if (shared) {
+  drop.classList.add('hidden');
+  toast('Loading galaxy…', 10_000);
+  fetch(`/s/${shared[1]}.json`)
+    .then(async (res) => {
+      // Unknown ids fall through to the SPA rewrite and come back as HTML.
+      if (!res.ok || !(res.headers.get('content-type') ?? '').includes('json')) throw new Error('missing');
+      start(parseAny(await res.text(), shared[1]));
+      toast('Click anywhere for sound', 4000);
+    })
+    .catch(() => {
+      drop.classList.remove('hidden');
+      toast('This link has expired or never existed', 6000);
+    });
+}
 
 const logParam = params.get('log');
 if (logParam) loadUrl(logParam.startsWith('/') ? logParam : `/${logParam}`).catch((err) => toast(`Could not load ${logParam}: ${err.message}`, 5000));

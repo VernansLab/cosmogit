@@ -12,7 +12,8 @@
     "cosmogit": "tsx cli/cosmogit.ts",
     "typecheck": "tsc --noEmit",
     "build:get": "esbuild cli/get.ts --bundle --platform=node --format=cjs --target=node18 --minify --legal-comments=none --outfile=dist/get",
-    "deploy": "pnpm build && firebase deploy --only hosting --project cosmogit"
+    "deploy": "pnpm build && firebase deploy --only hosting --project cosmogit",
+    "share": "tsx cli/share.ts"
   },
   "dependencies": {
     "mediabunny": "^1.60.0",
