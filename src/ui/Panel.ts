@@ -9,9 +9,14 @@ export interface PanelActions {
 export interface ExportChoice {
   resolution: '720p' | '1080p' | '1440p' | '4k';
   fps: 30 | 60;
+  /** Render until the history ends (ignores `seconds`). */
+  wholeHistory: boolean;
   seconds: number;
   fromStart: boolean;
 }
+
+/** Shared by the panel, the HUD record button and the `r` key. */
+export const exportChoice: ExportChoice = { resolution: '1080p', fps: 60, wholeHistory: true, seconds: 60, fromStart: true };
 
 /** Tweakpane settings panel. */
 export class Panel {
@@ -63,7 +68,8 @@ export class Panel {
     cam
       .addBinding(camState, 'mode', { options: { 'Auto (cinematic)': 'auto', Free: 'free' } })
       .on('change', (e) => app.director.setMode(e.value as 'auto' | 'free'));
-    cam.addBinding(app.director, 'orbitSpeed', { label: 'orbit speed', min: -0.5, max: 0.5 });
+    cam.addBinding(app.director, 'energy', { label: 'energy', min: 0, max: 1 });
+    cam.addButton({ title: 'Next shot (n)' }).on('click', () => app.director.cut());
     cam.addBinding(app.director, 'returnAfter', { label: 'auto after (s)', min: 2, max: 60, step: 1 });
     cam.addBinding(app.director, 'context', { min: 0, max: 1 });
     // Keep the dropdown honest when the director switches on its own.
@@ -82,11 +88,12 @@ export class Panel {
     }
 
     if (actions.exportVideo) {
-      const choice: ExportChoice = { resolution: '1080p', fps: 60, seconds: 30, fromStart: true };
-      const ex = this.pane.addFolder({ title: 'Export MP4', expanded: false });
+      const choice = exportChoice;
+      const ex = this.pane.addFolder({ title: 'Record MP4', expanded: false });
       ex.addBinding(choice, 'resolution', { options: { '720p': '720p', '1080p': '1080p', '1440p': '1440p', '4K': '4k' } });
       ex.addBinding(choice, 'fps', { options: { 30: 30, 60: 60 } });
-      ex.addBinding(choice, 'seconds', { label: 'length (s)', min: 5, max: 600, step: 5 });
+      ex.addBinding(choice, 'wholeHistory', { label: 'whole history' });
+      ex.addBinding(choice, 'seconds', { label: 'else length (s)', min: 5, max: 600, step: 5 });
       ex.addBinding(choice, 'fromStart', { label: 'from start' });
       ex.addButton({ title: 'Render video' }).on('click', () => actions.exportVideo!(choice));
     }

@@ -1,4 +1,4 @@
-import { readdirSync } from 'node:fs';
+import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
 
@@ -19,8 +19,37 @@ function logIndex(): Plugin {
   };
 }
 
+/** Dev only: POST /__cosmogit/save?name=x.mp4 writes the body to ./exports. */
+function saveExports(): Plugin {
+  return {
+    name: 'save-exports',
+    configureServer(server) {
+      server.middlewares.use('/__cosmogit/save', (req, res) => {
+        if (req.method !== 'POST') {
+          res.statusCode = 405;
+          res.end();
+          return;
+        }
+        const url = new URL(req.url ?? '', 'http://x');
+        // Keep it to a plain file name inside ./exports.
+        const name = (url.searchParams.get('name') ?? 'cosmogit.mp4').replace(/[^\w.-]+/g, '_').replace(/^\.+/, '');
+        const chunks: Buffer[] = [];
+        req.on('data', (c: Buffer) => chunks.push(c));
+        req.on('end', () => {
+          const dir = join(server.config.root, 'exports');
+          mkdirSync(dir, { recursive: true });
+          const path = join(dir, name);
+          writeFileSync(path, Buffer.concat(chunks));
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ path }));
+        });
+      });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [logIndex()],
+  plugins: [logIndex(), saveExports()],
   server: { port: 5178 },
   build: { target: 'es2022', chunkSizeWarningLimit: 2000 },
 });

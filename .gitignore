@@ -3,3 +3,4 @@ dist
 *.local
 public/logs/*.json
 .DS_Store
+exports

@@ -167,6 +167,16 @@ export class Contributors {
     }
   }
 
+  /** The pilot with the most work queued (or most recently active), for the chase camera. */
+  busiest(): Vector3 | null {
+    let best: Pilot | null = null;
+    for (const p of this.pilots.values()) {
+      if (p.opacity < 0.5) continue;
+      if (!best || p.queue.length > best.queue.length || (p.queue.length === best.queue.length && p.lastActive > best.lastActive)) best = p;
+    }
+    return best?.pos ?? null;
+  }
+
   /** Positions of active pilots, for the camera. */
   *active(): Iterable<Vector3> {
     for (const p of this.pilots.values()) if (p.opacity > 0.3) yield p.pos;

@@ -151,7 +151,7 @@ export class App {
     );
     this.scene.add(this.contributors.object);
     this.seek(0);
-    this.director.establish();
+    this.director.establish(true);
     this.hooks.onLoad?.(log);
   }
 
@@ -269,7 +269,7 @@ export class App {
         if (this.doneFor > 6) {
           this.doneFor = 0;
           this.seek(0);
-          this.director.establish();
+          this.director.establish(true);
         }
       }
 
@@ -286,6 +286,7 @@ export class App {
     this.stars.update(this.renderer, this.time, dt, this.layout);
     this.filaments.update(this.state, this.layout);
     this.dust.update(dt, this.time, this.layout.radius);
+    this.director.follow(this.contributors?.busiest() ?? null);
     this.director.update(dt, this.layout.radius);
     this.background.update(this.time, this.camera.position);
     this.stars.uniforms.uFocus.value = this.director.focusDistance;

@@ -4,7 +4,7 @@ import { Exporter } from './export/Exporter';
 import { parseAny } from './data/parse';
 import type { RepoLog } from './data/types';
 import { Hud } from './ui/Hud';
-import { Panel } from './ui/Panel';
+import { exportChoice, Panel } from './ui/Panel';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const drop = document.getElementById('drop')!;
@@ -47,11 +47,24 @@ const audioSettings = {
   },
   onChange: () => sound.applyVolume(),
 };
-const exporter = new Exporter(app, {
-  setExporting: (v) => setExporting(v),
-  progress: (_f, label) => toast(label, 60_000),
-  done: (msg) => toast(msg, 6000),
-});
+const recordBtn = document.getElementById('record')!;
+const exporter = new Exporter(
+  app,
+  {
+    setExporting: (v) => {
+      setExporting(v);
+      recordBtn.classList.toggle('recording', v);
+    },
+    progress: (_f, label) => toast(label, 60_000),
+    done: (msg) => toast(msg, 8000),
+  },
+  sound,
+);
+const record = () => {
+  if (exporter.running) exporter.cancel();
+  else if (app.playback) void exporter.run(exportChoice);
+};
+recordBtn.addEventListener('click', record);
 new Panel(app, { audio: audioSettings, exportVideo: (choice) => exporter.run(choice) });
 
 let toastTimer = 0;
@@ -123,6 +136,15 @@ window.addEventListener('keydown', (e) => {
   switch (e.key) {
     case 'Escape':
       if (exporter.running) exporter.cancel();
+      break;
+    case 'r':
+      record();
+      break;
+    case 'n':
+      if (app.director.mode === 'auto') {
+        app.director.cut();
+        toast(`Shot: ${app.director.currentShot}`);
+      }
       break;
     case ' ':
       e.preventDefault();

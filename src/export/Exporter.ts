@@ -1,5 +1,16 @@
-import { BufferTarget, CanvasSource, getFirstEncodableVideoCodec, Mp4OutputFormat, Output, QUALITY_HIGH } from 'mediabunny';
+import {
+  AudioBufferSource,
+  BufferTarget,
+  CanvasSource,
+  getFirstEncodableAudioCodec,
+  getFirstEncodableVideoCodec,
+  Mp4OutputFormat,
+  Output,
+  QUALITY_HIGH,
+  QUALITY_MEDIUM,
+} from 'mediabunny';
 import type { App } from '../App';
+import type { Sonifier } from '../audio/Sonifier';
 import type { Commit } from '../data/types';
 import { authorColor, cssColor } from '../render/palette';
 import type { ExportChoice } from '../ui/Panel';
@@ -11,6 +22,11 @@ const SIZES: Record<ExportChoice['resolution'], [number, number]> = {
   '4k': [3840, 2160],
 };
 
+/** Upper bound for "whole history" renders. */
+const MAX_SECONDS = 15 * 60;
+/** Seconds of effects to keep rolling after the last commit. */
+const TAIL_SECONDS = 3;
+
 const dateFmt = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 
 export interface ExportHost {
@@ -20,9 +36,42 @@ export interface ExportHost {
 }
 
 /**
+ * Yield to the event loop without setTimeout, which background tabs clamp
+ * to once a second. A MessageChannel round trip isn't throttled.
+ */
+function yieldToLoop(): Promise<void> {
+  return new Promise((resolve) => {
+    const ch = new MessageChannel();
+    ch.port1.onmessage = () => resolve();
+    ch.port2.postMessage(0);
+  });
+}
+
+/** Save through the dev server into ./exports; returns the path, or null if not available. */
+async function saveToProject(blob: Blob, name: string): Promise<string | null> {
+  if (!import.meta.env.DEV) return null;
+  try {
+    const res = await fetch(`/__cosmogit/save?name=${encodeURIComponent(name)}`, { method: 'POST', body: blob });
+    if (!res.ok) return null;
+    return ((await res.json()) as { path: string }).path;
+  } catch {
+    return null;
+  }
+}
+
+function download(blob: Blob, name: string): void {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
+}
+
+/**
  * Offline MP4 renderer. Steps the app with a fixed timestep (so the result
  * is smooth regardless of how long each frame takes to render), composites
- * the HUD text onto each frame, and encodes with WebCodecs via mediabunny.
+ * the HUD text onto each frame, encodes with WebCodecs via mediabunny, and
+ * renders the soundtrack offline from the sound events logged along the way.
  */
 export class Exporter {
   private cancelled = false;
@@ -31,6 +80,7 @@ export class Exporter {
   constructor(
     private app: App,
     private host: ExportHost,
+    private sound?: Sonifier,
   ) {}
 
   cancel(): void {
@@ -44,11 +94,12 @@ export class Exporter {
       return;
     }
     const [width, height] = SIZES[choice.resolution];
-    const codec = await getFirstEncodableVideoCodec(['avc', 'hevc', 'vp9', 'av1'], { width, height });
-    if (!codec) {
+    const videoCodec = await getFirstEncodableVideoCodec(['avc', 'hevc', 'vp9', 'av1'], { width, height });
+    if (!videoCodec) {
       this.host.done(`No encoder available for ${width}×${height}`);
       return;
     }
+    const audioCodec = this.sound?.enabled ? await getFirstEncodableAudioCodec(['aac', 'opus'], { numberOfChannels: 2, sampleRate: 48000 }) : null;
 
     this.running = true;
     this.cancelled = false;
@@ -69,56 +120,66 @@ export class Exporter {
     frame.height = height;
     const g = frame.getContext('2d')!;
     const output = new Output({ format: new Mp4OutputFormat({ fastStart: 'in-memory' }), target: new BufferTarget() });
-    const source = new CanvasSource(frame, { codec, quality: QUALITY_HIGH, keyFrameInterval: 2 });
-    output.addVideoTrack(source, { frameRate: choice.fps });
+    const video = new CanvasSource(frame, { codec: videoCodec, quality: QUALITY_MEDIUM, keyFrameInterval: 2 });
+    output.addVideoTrack(video, { frameRate: choice.fps });
+    const audio = audioCodec ? new AudioBufferSource({ codec: audioCodec, quality: QUALITY_HIGH }) : null;
+    if (audio) output.addAudioTrack(audio);
 
+    const name = `${app.log?.repo ?? 'cosmogit'}-${choice.resolution}.mp4`;
     let message = '';
     try {
       await output.start();
       app.resize(width, height, 1);
       if (choice.fromStart) {
         app.seek(0);
-        app.director.establish();
+        app.director.establish(true);
       }
-      const total = Math.round(choice.seconds * choice.fps);
+      this.sound?.beginRecording();
+      const limit = Math.round((choice.wholeHistory ? MAX_SECONDS : choice.seconds) * choice.fps);
       const dt = 1 / choice.fps;
       const started = performance.now();
-      for (let i = 0; i < total; i++) {
-        if (this.cancelled) break;
+      const startIndex = app.playback!.index;
+      let frames = 0;
+      let tail = -1;
+
+      while (frames < limit && !this.cancelled) {
         app.advance(dt);
+        this.sound?.tick(dt);
         g.drawImage(app.renderer.domElement, 0, 0, width, height);
         this.drawOverlay(g, width, height, recent);
-        await source.add(i * dt, dt);
-        if (i % 10 === 0) {
-          const f = (i + 1) / total;
+        await video.add(frames * dt, dt);
+        frames++;
+
+        // Once history runs out, let the last effects play for a few seconds.
+        if (tail < 0 && app.playback!.done && !app.settings.loop) tail = Math.round(TAIL_SECONDS * choice.fps);
+        if (tail >= 0 && tail-- === 0) break;
+
+        if (frames % 10 === 0) {
+          const pb = app.playback!;
+          const f = choice.wholeHistory
+            ? (pb.index - startIndex) / Math.max(1, pb.commits.length - startIndex)
+            : frames / limit;
           const elapsed = (performance.now() - started) / 1000;
-          const eta = (elapsed / f) * (1 - f);
-          this.host.progress(f, `Rendering ${width}×${height} · ${Math.round(f * 100)}% · ${Math.ceil(eta)}s left · Esc to stop`);
-          // Yield so the page stays responsive.
-          await new Promise((r) => setTimeout(r, 0));
-        }
-        if (app.playback?.done && !app.settings.loop && i > choice.fps) {
-          // Let the last effects play out for two seconds, then stop.
-          const tail = Math.min(total - i - 1, choice.fps * 2);
-          for (let j = 0; j < tail; j++) {
-            app.advance(dt);
-            g.drawImage(app.renderer.domElement, 0, 0, width, height);
-            this.drawOverlay(g, width, height, recent);
-            await source.add((i + 1 + j) * dt, dt);
-          }
-          break;
+          const eta = f > 0.01 ? Math.ceil((elapsed / f) * (1 - f)) : '?';
+          this.host.progress(f, `Rendering ${width}×${height} · ${Math.round(f * 100)}% · ${(frames / choice.fps).toFixed(0)}s of video · ~${eta}s left · Esc to stop`);
+          await yieldToLoop();
         }
       }
+
+      const duration = frames * dt;
+      const soundtrack = await this.sound?.endRecording(duration);
+      if (audio && soundtrack) {
+        this.host.progress(1, 'Mixing soundtrack…');
+        await audio.add(soundtrack);
+      }
       await output.finalize();
-      const buffer = (output.target as BufferTarget).buffer!;
-      const blob = new Blob([buffer], { type: 'video/mp4' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `${app.log?.repo ?? 'cosmogit'}-${choice.resolution}.mp4`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
-      message = `Saved ${a.download} (${(blob.size / 1e6).toFixed(1)} MB)${this.cancelled ? ', stopped early' : ''}`;
+      const blob = new Blob([(output.target as BufferTarget).buffer!], { type: 'video/mp4' });
+      const saved = await saveToProject(blob, name);
+      if (!saved) download(blob, name);
+      const where = saved ?? name;
+      message = `Saved ${where} · ${duration.toFixed(0)}s · ${(blob.size / 1e6).toFixed(1)} MB${soundtrack ? ' · with sound' : ''}${this.cancelled ? ' (stopped early)' : ''}`;
     } catch (err) {
+      await this.sound?.endRecording(0);
       await output.cancel().catch(() => {});
       message = `Export failed: ${(err as Error).message}`;
     } finally {

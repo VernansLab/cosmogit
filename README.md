@@ -9,9 +9,9 @@ Your git history as a living 3D galaxy. Inspired by [Gource](https://gource.io/)
   - An edit pulses the star, scaled by the diff size (green when lines are mostly added, red when mostly removed).
   - A deleted file implodes into dust.
   - A renamed file streaks across the galaxy to its new home.
-- **Cinematic camera** that follows activity, dollies in on big commits and pulls out after quiet periods. Drag to take over; it returns to auto after 10 s of no input.
+- **Cinematic camera** that cuts between shots (orbit, swoop, skim the galactic plane, overhead, chase the busiest contributor, wide), banks into turns and dollies in on big commits. An energy slider sets how restless it is. Drag to take over; it returns to auto after 10 s of no input.
 - **Procedural sound**: a pentatonic note per change. File type sets the pitch, diff size the loudness, and the author the instrument.
-- **MP4 export** at 720p to 4K, 30/60 fps, rendered offline at a fixed timestep with the HUD burned in.
+- **Recording** (● button or `r`): MP4 at 720p to 4K, 30/60 fps, rendered offline at a fixed timestep with the HUD and the soundtrack. With `pnpm dev` it saves into `exports/`.
 - HDR bloom, chromatic aberration, bokeh depth of field, nebula skybox and film grain.
 - **GPU-driven:** star motion runs in a WebGPU compute shader; 100k files render in about 3 ms a frame.
 
@@ -41,6 +41,8 @@ Logs in `public/logs/` show up as buttons on the start screen.
 | ← → | seek ±2% |
 | + − | speed up / slow down |
 | c | toggle auto / free camera |
+| n | next camera shot |
+| r | record MP4 (whole history, with sound) / stop |
 | m | mute |
 | h | hide HUD |
 | Esc | stop an export |
