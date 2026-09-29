@@ -29,3 +29,4 @@ Background Chrome tabs pause rAF. Drive frames manually via `window.app.advance(
 - Local logs live in `./logs` (served by the dev server only). Never put user logs in `public/`: everything there ships in the build and gets deployed.
 - `public/demo/zustand.json` is the one public demo (emails stripped).
 - `shared/` (gitignored) holds `pnpm share` data, copied to `dist/s/` on build. A deploy from a machine without it removes every shared link.
+- In-browser reading: `src/data/gitReader.ts` (isomorphic-git; fs-agnostic, tested against `git log` in Node) runs in `gitWorker.ts` over `browserFs.ts` adapters (FileSystemDirectoryHandle or webkitdirectory Files). isomorphic-git's `log` can repeat commits around merges; it is deduped by oid.

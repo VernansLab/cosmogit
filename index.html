@@ -36,18 +36,27 @@
       <div class="drop-card">
         <h1>Cosmogit</h1>
         <p class="tagline">Your git history as a living 3D galaxy.</p>
-        <p>1. Run this inside any git repo:</p>
-        <div class="oneliner">
-          <code id="oneliner">curl -fsSL https://cosmogit.web.app/get | node</code>
-          <button id="copy" title="Copy">Copy</button>
+        <button id="open-folder" class="open-folder">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3 6.5A2.5 2.5 0 0 1 5.5 4h3.6c.6 0 1.2.24 1.6.66L12.1 6H18.5A2.5 2.5 0 0 1 21 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5v-11Z"/></svg>
+          Open a repo folder
+        </button>
+        <input id="dirpick" type="file" webkitdirectory hidden />
+        <div id="reading" class="reading" hidden>
+          <div class="reading-text" id="reading-text">Reading…</div>
+          <div class="reading-bar"><div id="reading-fill"></div></div>
         </div>
-        <p>2. Drop the <code>.cosmogit.json</code> file it writes anywhere on this page, or</p>
-        <label class="browse">
-          Browse for the file…
-          <input id="file" type="file" accept=".json,.log,.txt,application/json,text/plain" hidden />
-        </label>
-        <p class="hint">Needs git and Node. Your history never leaves your machine: the file is read in your browser. Gource custom logs work too.</p>
+        <p class="hint">Pick a repo, or a folder of repos to combine them. It's read right here in your browser; nothing is uploaded.</p>
         <div id="samples" class="samples"><span class="try">Or try a demo:</span></div>
+        <details class="alt">
+          <summary>Prefer the terminal, or a huge repo?</summary>
+          <div class="oneliner">
+            <code id="oneliner">curl -fsSL https://cosmogit.web.app/get | node</code>
+            <button id="copy" title="Copy">Copy</button>
+          </div>
+          <p>Run it inside a repo (or a folder of repos), then drop the <code>.cosmogit.json</code> it writes on this page, or
+            <label class="browse-link">browse for it<input id="file" type="file" accept=".json,.log,.txt,application/json,text/plain" hidden /></label>.
+          </p>
+        </details>
         <div class="byline">By <a href="https://vernanslab.ai" target="_blank" rel="noopener">VernansLab</a></div>
       </div>
     </div>

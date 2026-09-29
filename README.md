@@ -17,13 +17,13 @@ Your git history as a living 3D galaxy, rebuilt for the browser with Three.js on
 
 ## Try it
 
-Open **https://cosmogit.web.app**, then run this inside any git repo:
+Open **https://cosmogit.web.app** and click **Open a repo folder**. Pick a repo, or a folder containing several repos to combine them into one galaxy. The history is read from `.git` right in your browser (via [isomorphic-git](https://isomorphic-git.org/)); nothing is uploaded. Chrome and Edge open the folder directly; Safari and Firefox read it as a folder upload.
+
+Prefer the terminal, or have a huge repo? Run this inside a repo (or a folder of repos) and drop the `<name>.cosmogit.json` it writes on the page:
 
 ```sh
-curl -fsSL https://cosmogit.web.app/get | node
+curl -fsSL https://cosmogit.web.app/get | node          # add `node - --first-parent` for mainline only
 ```
-
-Run it in a folder that *contains* several repos (a polyrepo workspace) and it combines them into one galaxy, one arm per repo. It writes `<name>.cosmogit.json` to the current directory (add `node - --first-parent` for mainline only). Drop that file on the page, or click **Browse** to pick it. Nothing is uploaded: the script runs locally and the page reads the file in your browser.
 
 By Max Flach · [VernansLab](https://vernanslab.ai).
 

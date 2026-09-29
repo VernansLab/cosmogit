@@ -102,3 +102,18 @@ html, body { margin: 0; height: 100%; background: #020308; color: var(--fg); fon
 .pick-card .pc-path { font: 400 11px var(--mono); color: var(--dim); margin: 2px 0 6px; word-break: break-all; }
 .pick-card .pc-meta { font: 400 11.5px var(--sans); color: var(--dim); line-height: 1.5; }
 @media (max-width: 700px) { .float-label { font-size: 10.5px; } .pick-card { max-width: 240px; } }
+
+/* ---- Open a folder ---- */
+.open-folder { display: inline-flex; align-items: center; gap: 10px; margin: 6px 0 4px; font: 600 16px var(--sans); color: #fff; background: linear-gradient(90deg, #4f7dff, #9a5cff); border: none; padding: 13px 24px; border-radius: 999px; cursor: pointer; box-shadow: 0 8px 30px rgba(110, 110, 255, 0.35); transition: transform 0.15s, box-shadow 0.2s; }
+.open-folder:hover { transform: translateY(-1px); box-shadow: 0 10px 40px rgba(130, 120, 255, 0.5); }
+.open-folder:disabled { opacity: 0.6; cursor: progress; transform: none; }
+.reading { margin: 12px 0 4px; }
+.reading-text { font: 400 12.5px var(--mono); color: var(--fg); margin-bottom: 6px; }
+.reading-bar { height: 4px; border-radius: 4px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.reading-bar div { height: 100%; width: 0; background: linear-gradient(90deg, #7fb2ff, #d59bff); transition: width 0.2s; }
+.alt { margin-top: 18px; color: var(--dim); font-size: 13.5px; }
+.alt summary { cursor: pointer; color: var(--dim); list-style: none; }
+.alt summary::before { content: '▸ '; }
+.alt[open] summary::before { content: '▾ '; }
+.alt summary:hover { color: var(--fg); }
+.browse-link { color: var(--accent); cursor: pointer; border-bottom: 1px solid rgba(127, 178, 255, 0.4); }

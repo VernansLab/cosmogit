@@ -6,6 +6,7 @@ import type { RepoLog } from './data/types';
 import { Hud } from './ui/Hud';
 import { Labels } from './ui/Labels';
 import { exportChoice, Panel } from './ui/Panel';
+import type { GitWorkerIn, GitWorkerOut } from './data/gitWorker';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const drop = document.getElementById('drop')!;
@@ -120,6 +121,71 @@ window.addEventListener('drop', (e) => {
   const file = e.dataTransfer?.files[0];
   if (file) void loadFile(file);
 });
+// ---- Open a repo folder: read .git in a worker, nothing uploaded ----
+const openBtn = document.getElementById('open-folder') as HTMLButtonElement;
+const dirPick = document.getElementById('dirpick') as HTMLInputElement;
+const reading = document.getElementById('reading')!;
+const readingText = document.getElementById('reading-text')!;
+const readingFill = document.getElementById('reading-fill')!;
+
+function readFolder(msg: GitWorkerIn): void {
+  const worker = new Worker(new URL('./data/gitWorker.ts', import.meta.url), { type: 'module' });
+  openBtn.disabled = true;
+  reading.hidden = false;
+  readingText.textContent = 'Opening…';
+  readingFill.style.width = '0';
+  const finish = () => {
+    worker.terminate();
+    openBtn.disabled = false;
+    reading.hidden = true;
+  };
+  worker.onmessage = (e: MessageEvent<GitWorkerOut>) => {
+    const m = e.data;
+    if (m.type === 'progress') {
+      readingText.textContent = m.text;
+      readingFill.style.width = `${Math.round(m.fraction * 100)}%`;
+    } else if (m.type === 'done') {
+      finish();
+      start(m.log);
+    } else {
+      finish();
+      toast(m.message, 7000);
+    }
+  };
+  worker.onerror = (e) => {
+    finish();
+    toast(`Could not read that folder: ${e.message}`, 7000);
+  };
+  worker.postMessage(msg);
+}
+
+openBtn.addEventListener('click', async (e) => {
+  e.stopPropagation();
+  const pick = (window as unknown as { showDirectoryPicker?: (o?: object) => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker;
+  if (pick) {
+    try {
+      readFolder({ handle: await pick({ mode: 'read', id: 'cosmogit-repo' }) });
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') toast((err as Error).message, 5000);
+    }
+  } else {
+    // Safari/Firefox: pick the folder as an upload; only the .git contents are kept.
+    dirPick.click();
+  }
+});
+dirPick.addEventListener('change', () => {
+  const all = [...(dirPick.files ?? [])];
+  dirPick.value = '';
+  if (!all.length) return;
+  const name = all[0].webkitRelativePath.split('/')[0];
+  const files = all.filter((f) => f.webkitRelativePath.includes('/.git/'));
+  if (!files.length) {
+    toast(`“${name}” has no .git folder inside it.`, 6000);
+    return;
+  }
+  readFolder({ files, name });
+});
+
 const picker = document.getElementById('file') as HTMLInputElement;
 const onPick = () => {
   const file = picker.files?.[0];
