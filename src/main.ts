@@ -228,11 +228,23 @@ const shared = /^\/s\/([\w-]+)\/?$/.exec(location.pathname);
 if (shared) {
   drop.classList.add('hidden');
   toast('Loading galaxy…', 10_000);
-  fetch(`/s/${shared[1]}.json`)
-    .then(async (res) => {
+  // Older ids can end in '-' or '_', which chat apps and terminals often cut
+  // off a link, so a miss retries with those put back.
+  const tryIds = [shared[1], `${shared[1]}-`, `${shared[1]}_`];
+  const fetchShared = async (): Promise<string> => {
+    for (const id of tryIds) {
+      const res = await fetch(`/s/${id}.json`);
       // Unknown ids fall through to the SPA rewrite and come back as HTML.
-      if (!res.ok || !(res.headers.get('content-type') ?? '').includes('json')) throw new Error('missing');
-      start(parseAny(await res.text(), shared[1]));
+      if (res.ok && (res.headers.get('content-type') ?? '').includes('json')) {
+        if (id !== shared[1]) history.replaceState(null, '', `/s/${id}`);
+        return res.text();
+      }
+    }
+    throw new Error('missing');
+  };
+  fetchShared()
+    .then((text) => {
+      start(parseAny(text, shared[1]));
       toast('Click anywhere for sound', 4000);
     })
     .catch(() => {

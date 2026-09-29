@@ -19,6 +19,20 @@ import { fileURLToPath } from 'node:url';
 import { extractPath, reposFor } from './source';
 
 const SITE = 'https://cosmogit.web.app';
+
+/**
+ * 16 random letters and digits (~95 bits). No '-' or '_': chat apps and
+ * terminals treat a trailing one as punctuation and cut it off the link.
+ */
+function newId(): string {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let id = '';
+  for (const b of randomBytes(32)) {
+    if (b < 248) id += alphabet[b % 62]; // 248 = 4·62: skip the biased tail
+    if (id.length === 16) break;
+  }
+  return id.length === 16 ? id : newId();
+}
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const sharedDir = join(root, 'shared');
 const indexFile = join(sharedDir, 'index.json');
@@ -54,7 +68,7 @@ const index: Record<string, string> = existsSync(indexFile) ? JSON.parse(readFil
 let id = index[repo];
 if (!id || argv.includes('--new')) {
   if (id) rmSync(join(sharedDir, `${id}.json`), { force: true });
-  id = randomBytes(12).toString('base64url');
+  id = newId();
   index[repo] = id;
 }
 writeFileSync(join(sharedDir, `${id}.json`), JSON.stringify(log));
