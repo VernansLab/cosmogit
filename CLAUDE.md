@@ -1,10 +1,10 @@
-# 3dgource
+# Cosmogit
 
 3D, browser-based take on Gource: git history rendered as a galaxy (Three.js + postprocessing, Vite, TypeScript strict, pnpm).
 
 ## Commands
 - `pnpm dev`: viewer on http://localhost:5178 (`?log=logs/<name>.json` preloads a log)
-- `pnpm galaxy <repo> [--first-parent]`: extract + open
+- `pnpm cosmogit <repo> [--first-parent]`: extract + open
 - `pnpm extract <repo> [out.json]`
 - `pnpm test` (vitest), `pnpm typecheck`, `pnpm build`
 

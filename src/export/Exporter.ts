@@ -114,7 +114,7 @@ export class Exporter {
       const blob = new Blob([buffer], { type: 'video/mp4' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `${app.log?.repo ?? 'galaxy'}-${choice.resolution}.mp4`;
+      a.download = `${app.log?.repo ?? 'cosmogit'}-${choice.resolution}.mp4`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
       message = `Saved ${a.download} (${(blob.size / 1e6).toFixed(1)} MB)${this.cancelled ? ', stopped early' : ''}`;

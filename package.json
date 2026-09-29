@@ -1,5 +1,5 @@
 {
-  "name": "3dgource",
+  "name": "cosmogit",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,7 +9,7 @@
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
     "extract": "tsx cli/extract.ts",
-    "galaxy": "tsx cli/galaxy.ts",
+    "cosmogit": "tsx cli/cosmogit.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -18,7 +18,7 @@ export class Panel {
   readonly pane: Pane;
 
   constructor(app: App, actions: PanelActions) {
-    this.pane = new Pane({ title: 'Galaxy', expanded: false });
+    this.pane = new Pane({ title: 'Cosmogit', expanded: false });
     const s = app.settings;
     const apply = () => app.applySettings();
 

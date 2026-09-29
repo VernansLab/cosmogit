@@ -1,4 +1,4 @@
-# 3dgource
+# Cosmogit
 
 Your git history as a living 3D galaxy. Inspired by [Gource](https://gource.io/), rebuilt for the browser with Three.js.
 
@@ -18,8 +18,8 @@ Your git history as a living 3D galaxy. Inspired by [Gource](https://gource.io/)
 
 ```sh
 pnpm install
-pnpm galaxy ~/code/some-repo              # extract history and open the viewer
-pnpm galaxy ~/code/some-repo --first-parent   # mainline only (exact final tree)
+pnpm cosmogit ~/code/some-repo              # extract history and open the viewer
+pnpm cosmogit ~/code/some-repo --first-parent   # mainline only (exact final tree)
 ```
 
 Or extract a log and drop it on the page (`pnpm dev`):
@@ -44,7 +44,7 @@ Logs in `public/logs/` show up as buttons on the start screen.
 | h | hide HUD |
 | Esc | stop an export |
 
-Everything else (speed, look, layout, post FX, camera, sound, export) is in the **Galaxy** panel, top right.
+Everything else (speed, look, layout, post FX, camera, sound, export) is in the **Cosmogit** panel, top right.
 
 ## How it works
 
