@@ -101,3 +101,7 @@ Cosmogit exists because of **[Gource](https://gource.io/)** by Andrew Caudwell, 
 Built with [Three.js](https://threejs.org/) (WebGPU + TSL), [Tone.js](https://tonejs.github.io/) and [Mediabunny](https://mediabunny.dev/).
 
 By Max Flach · [VernansLab](https://vernanslab.ai).
+
+## License
+
+[MIT](LICENSE) © Max Flach (VernansLab). Dependencies keep their own licenses (Three.js, Tone.js, isomorphic-git and Tweakpane are MIT; Mediabunny is MPL-2.0).
