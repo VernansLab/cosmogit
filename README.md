@@ -1,6 +1,6 @@
 # Cosmogit
 
-Your git history as a living 3D galaxy. Inspired by [Gource](https://gource.io/), rebuilt for the browser with Three.js on WebGPU (with automatic WebGL2 fallback).
+Your git history as a living 3D galaxy, rebuilt for the browser with Three.js on WebGPU (with automatic WebGL2 fallback). A tribute to [Gource](https://gource.io/).
 
 - **Directories are star systems.** The repo root is the galactic core, and subtrees fan out into spiral arms.
 - **Files are stars.** Colour comes from the extension and size from the line count. Recently touched stars burn blue-white and cool to a dim red.
@@ -25,7 +25,7 @@ curl -fsSL https://cosmogit.web.app/get | node
 
 It writes `<repo>.cosmogit.json` to the current directory (add `node - --first-parent` for mainline only). Drop that file on the page, or click **Browse** to pick it. Nothing is uploaded: the script runs locally and the page reads the file in your browser.
 
-By VernansLab.
+By [VernansLab](https://vernanslab.ai).
 
 ## Usage (local)
 
@@ -91,3 +91,11 @@ pnpm deploy   # build + firebase deploy --only hosting (project: cosmogit)
 ```
 
 `pnpm build` also bundles `cli/get.ts` into `dist/get`, the script behind the one-liner.
+
+## Credits
+
+Cosmogit exists because of **[Gource](https://gource.io/)** by Andrew Caudwell, the original software version control visualization. The idea of replaying a repository's history as a living tree, with contributors flying around and zapping files as they change them, is Gource's. Cosmogit reimagines it in 3D for the browser; it is an independent implementation and shares no code with Gource (which is GPL-3.0). If you want the classic, go use Gource.
+
+Built with [Three.js](https://threejs.org/) (WebGPU + TSL), [Tone.js](https://tonejs.github.io/) and [Mediabunny](https://mediabunny.dev/).
+
+By [VernansLab](https://vernanslab.ai).
