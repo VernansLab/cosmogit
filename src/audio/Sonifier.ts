@@ -9,13 +9,29 @@ function note(seed: number, baseOctave: number, span = 2): string {
   return `${SCALE[seed % SCALE.length]}${baseOctave + ((seed >>> 4) % span)}`;
 }
 
+/** A reverb impulse response: stereo noise with an exponential decay. */
+function impulse(seconds: number): Tone.ToneAudioBuffer {
+  const rate = Tone.getContext().sampleRate;
+  const length = Math.floor(rate * seconds);
+  const buffer = Tone.getContext().createBuffer(2, length, rate);
+  for (let c = 0; c < 2; c++) {
+    const data = buffer.getChannelData(c);
+    for (let i = 0; i < length; i++) {
+      // -60 dB over the full length, with a soft 10 ms onset.
+      const t = i / rate;
+      data[i] = (Math.random() * 2 - 1) * Math.exp((-6.9 * t) / seconds) * Math.min(1, t / 0.01);
+    }
+  }
+  return new Tone.ToneAudioBuffer(buffer);
+}
+
 /**
  * The synths and effects. Built against whichever Tone context is current,
  * so the same graph plays live and renders offline for video export.
  */
 class Graph {
   readonly master: Tone.Volume;
-  private reverb: Tone.Reverb;
+  private reverb: Tone.Convolver;
   private pluck: Tone.PolySynth;
   private bells: Tone.PolySynth<Tone.FMSynth>[] = [];
   private thump: Tone.MembraneSynth;
@@ -24,8 +40,12 @@ class Graph {
 
   constructor() {
     const limiter = new Tone.Limiter(-2).toDestination();
-    this.reverb = new Tone.Reverb({ decay: 7, wet: 0.45 }).connect(limiter);
-    const delay = new Tone.FeedbackDelay({ delayTime: '8n.', feedback: 0.32, wet: 0.22 }).connect(this.reverb);
+    // Hand-built impulse response (decaying stereo noise) instead of Tone.Reverb,
+    // which renders its IR offline with throttle-prone setTimeout yields.
+    this.reverb = new Tone.Convolver(impulse(7)).connect(limiter);
+    const wet = new Tone.Gain(0.45).connect(this.reverb);
+    const dry = new Tone.Gain(0.75).connect(limiter);
+    const delay = new Tone.FeedbackDelay({ delayTime: '8n.', feedback: 0.32, wet: 0.22 }).fan(wet, dry);
     this.master = new Tone.Volume(-8).connect(delay);
 
     this.pluck = new Tone.PolySynth(Tone.Synth, {
@@ -58,9 +78,9 @@ class Graph {
     }).connect(this.master);
   }
 
-  /** Resolves once the reverb impulse response has been generated. */
+  /** The impulse response is built synchronously, so the graph is ready at once. */
   ready(): Promise<void> {
-    return this.reverb.ready;
+    return Promise.resolve();
   }
 
   trigger(kind: ApplyKind, ext: string, author: number, strength: number, when: number): void {
@@ -201,7 +221,14 @@ export class Sonifier {
     this.recording = null;
     if (!this.enabled || !events.length || duration <= 0) return null;
     const gain = this.gainDb();
-    const buffer = await Tone.Offline(async () => {
+    // Like Tone.Offline, but rendering the clock without yielding: Tone yields
+    // with setTimeout once per second of audio, which background tabs throttle
+    // to a crawl (minutes for a short soundtrack).
+    const original = Tone.getContext();
+    const offline = new Tone.OfflineContext(2, duration, sampleRate);
+    Tone.setContext(offline);
+    let buffer: Tone.ToneAudioBuffer;
+    try {
       const g = new Graph();
       g.master.volume.value = gain;
       await g.ready();
@@ -210,7 +237,11 @@ export class Sonifier {
         if (e.type === 'note') g.trigger(e.kind, e.ext, e.author, e.strength, e.t);
         else g.swell(e.size, e.t);
       }
-    }, duration, 2, sampleRate);
+      buffer = await offline.render(false);
+    } finally {
+      Tone.setContext(original);
+      void offline.dispose();
+    }
     const audio = buffer.get() ?? null;
     if (audio) normalize(audio);
     return audio;

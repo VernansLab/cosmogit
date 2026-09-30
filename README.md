@@ -2,20 +2,29 @@
 
 Your git history as a living 3D galaxy, rebuilt for the browser with Three.js on WebGPU (with automatic WebGL2 fallback). A tribute to [Gource](https://gource.io/).
 
-![Express's history as a galaxy: file clusters, contributors and the commit ticker](docs/screenshots/express.jpg)
+<p align="center">
+  <a href="docs/demo.mp4"><img src="docs/demo.gif" alt="zustand's history playing as a galaxy: contributors fly in and fire beams at the files they change" width="100%"></a>
+</p>
+<p align="center"><sub>zustand, 2023 to 2025. <a href="docs/demo.mp4">Watch the full 30-second clip with sound (MP4)</a>.</sub></p>
 
 <table>
   <tr>
-    <td><img src="docs/screenshots/zustand-skim.jpg" alt="zustand seen edge-on, with its contributors hovering over the disc"></td>
+    <td><img src="docs/screenshots/express.jpg" alt="Express's history as a galaxy: file clusters, a contributor and the commit ticker"></td>
     <td><img src="docs/screenshots/combined.jpg" alt="zustand and express combined into one galaxy, one arm per repo"></td>
   </tr>
   <tr>
-    <td align="center"><sub>zustand, skimming the galactic plane</sub></td>
+    <td align="center"><sub>Express</sub></td>
     <td align="center"><sub>zustand + express combined: one arm per repo</sub></td>
   </tr>
+  <tr>
+    <td><img src="docs/screenshots/zustand-skim.jpg" alt="zustand seen edge-on, with its contributors hovering over the disc"></td>
+    <td><img src="docs/screenshots/start.jpg" alt="The start page: open a repo folder, right in the browser"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>zustand, skimming the galactic plane</sub></td>
+    <td align="center"><sub>Open a repo folder, right in the browser</sub></td>
+  </tr>
 </table>
-
-<p align="center"><img src="docs/screenshots/start.jpg" alt="The start page: open a repo folder, right in the browser" width="70%"></p>
 
 - **Directories are star systems.** The repo root is the galactic core, and subtrees fan out into spiral arms.
 - **Files are stars.** Colour comes from the extension and size from the line count. Recently touched stars burn blue-white and cool to a dim red.

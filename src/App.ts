@@ -1,4 +1,4 @@
-import { Color, PerspectiveCamera, Scene, Vector3, WebGPURenderer } from 'three/webgpu';
+import { Color, PerspectiveCamera, type RenderTarget, Scene, Vector3, WebGPURenderer } from 'three/webgpu';
 import { Director } from './camera/Director';
 import type { Commit, RepoLog } from './data/types';
 import { GalaxyLayout } from './layout/GalaxyLayout';
@@ -75,6 +75,9 @@ export class App {
   particles: Particles;
   background: Background;
   contributors: Contributors | null = null;
+
+  /** When set, frames render here instead of the canvas (video export). */
+  captureTarget: RenderTarget | null = null;
 
   /** App clock in seconds; drives every shader. Advances only via advance(). */
   time = 0;
@@ -263,6 +266,17 @@ export class App {
   /** Advance everything by dt seconds and render one frame. */
   advance(dt: number): void {
     this.time += dt;
+    // three advances its per-frame node state (FRAME uniforms, pass renders)
+    // from its own requestAnimationFrame loop, which background tabs pause.
+    // Tick it ourselves then, and while exporting, so offscreen frames update.
+    if (document.hidden || this.captureTarget) {
+      const r = this.renderer as unknown as { _nodes?: { nodeFrame?: { update(): void; frameId: number } }; info: { frame: number } };
+      const frame = r._nodes?.nodeFrame;
+      if (frame) {
+        frame.update();
+        r.info.frame = frame.frameId;
+      }
+    }
     const pb = this.playback;
     if (pb && this.contributors) {
       const tick = pb.update(dt);
@@ -294,6 +308,8 @@ export class App {
     this.director.update(dt, this.layout.radius);
     this.background.update(this.time, this.camera.position);
     this.stars.uniforms.uFocus.value = this.director.focusDistance;
+    this.renderer.setRenderTarget(this.captureTarget);
     this.post.render(dt);
+    this.renderer.setRenderTarget(null);
   }
 }

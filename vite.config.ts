@@ -100,6 +100,7 @@ function saveExports(): Plugin {
 
 export default defineConfig({
   plugins: [localLogs(), sharedLogs(), saveExports()],
-  server: { port: 5178 },
+  // Data folders change while the app runs (saved videos, extracted logs); never reload for them.
+  server: { port: 5178, watch: { ignored: ['**/exports/**', '**/logs/**', '**/shared/**'] } },
   build: { target: 'es2022', chunkSizeWarningLimit: 2000 },
 });

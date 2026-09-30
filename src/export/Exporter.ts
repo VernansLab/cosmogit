@@ -9,6 +9,7 @@ import {
   QUALITY_HIGH,
   QUALITY_MEDIUM,
 } from 'mediabunny';
+import { RenderTarget, UnsignedByteType } from 'three/webgpu';
 import type { App } from '../App';
 import type { Sonifier } from '../audio/Sonifier';
 import type { Commit } from '../data/types';
@@ -21,6 +22,11 @@ const SIZES: Record<ExportChoice['resolution'], [number, number]> = {
   '1440p': [2560, 1440],
   '4k': [3840, 2160],
 };
+
+/** Where an export currently is; readable from the console for debugging. */
+function stage(s: string): void {
+  (globalThis as unknown as { __cosmogitExport?: string }).__cosmogitExport = s;
+}
 
 /** Upper bound for "whole history" renders. */
 const MAX_SECONDS = 15 * 60;
@@ -84,8 +90,27 @@ export class Exporter {
     private labels?: { update(): void; draw(g: CanvasRenderingContext2D, scale: number): void },
   ) {}
 
+  private target: RenderTarget | null = null;
+  private frame: ImageData | null = null;
+
   cancel(): void {
     this.cancelled = true;
+  }
+
+  /** Copy the last rendered frame from the capture target onto the 2D canvas. */
+  private async grab(g: CanvasRenderingContext2D, width: number, height: number): Promise<void> {
+    const px = (await this.app.renderer.readRenderTargetPixelsAsync(this.target!, 0, 0, width, height)) as Uint8Array;
+    const out = this.frame!.data;
+    const row = width * 4;
+    // The WebGL backend reads bottom-up; WebGPU top-down (rows may be padded to 256 bytes).
+    const stride = px.length / height;
+    const flip = this.app.backendName !== 'WebGPU';
+    for (let y = 0; y < height; y++) {
+      const src = (flip ? height - 1 - y : y) * stride;
+      out.set(px.subarray(src, src + row), y * row);
+    }
+    for (let i = 3; i < out.length; i += 4) out[i] = 255;
+    g.putImageData(this.frame!, 0, 0);
   }
 
   async run(choice: ExportChoice): Promise<void> {
@@ -131,6 +156,11 @@ export class Exporter {
     try {
       await output.start();
       app.resize(width, height, 1);
+      // Render off-screen and read pixels back: copying the visible canvas
+      // freezes when the tab is in the background.
+      this.target = new RenderTarget(width, height, { type: UnsignedByteType, depthBuffer: false });
+      this.frame = g.createImageData(width, height);
+      app.captureTarget = this.target;
       if (choice.fromStart) {
         app.seek(0);
         app.director.establish(true);
@@ -146,7 +176,8 @@ export class Exporter {
       while (frames < limit && !this.cancelled) {
         app.advance(dt);
         this.sound?.tick(dt);
-        g.drawImage(app.renderer.domElement, 0, 0, width, height);
+        stage(`frame ${frames}`);
+        await this.grab(g, width, height);
         this.labels?.update();
         this.labels?.draw(g, height / 1080);
         this.drawOverlay(g, width, height, recent);
@@ -170,13 +201,16 @@ export class Exporter {
       }
 
       const duration = frames * dt;
+      stage('audio');
       const soundtrack = await this.sound?.endRecording(duration);
       if (audio && soundtrack) {
         this.host.progress(1, 'Mixing soundtrack…');
         await audio.add(soundtrack);
       }
+      stage('finalize');
       await output.finalize();
       const blob = new Blob([(output.target as BufferTarget).buffer!], { type: 'video/mp4' });
+      stage('save');
       const saved = await saveToProject(blob, name);
       if (!saved) download(blob, name);
       const where = saved ?? name;
@@ -187,6 +221,9 @@ export class Exporter {
       message = `Export failed: ${(err as Error).message}`;
     } finally {
       app.hooks.onCommit = prevHook;
+      app.captureTarget = null;
+      this.target?.dispose();
+      this.target = null;
       app.resize(prevSize.width, prevSize.height, prevRatio);
       this.host.setExporting(false);
       this.running = false;
